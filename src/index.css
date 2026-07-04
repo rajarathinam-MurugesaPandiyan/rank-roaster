@@ -1,0 +1,149 @@
+:root {
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display:
+    "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Color Tokens */
+  --bg-base: #0b0d10; /* Deep Space Charcoal */
+  --bg-container: #161b22; /* Subtle Obsidian */
+  --bg-elevated: #21262d; /* Elevated Slate */
+
+  --accent-teal: #45a29e; /* Primary Action & Success */
+  --accent-amber: #ffa552; /* Highlights & Metrics */
+  --border-muted: #30363d; /* Muted Steel */
+
+  --text-primary: #f0f6fc; /* Off-White */
+  --text-secondary: #8b949e; /* Cool Gray */
+  --text-disabled: #484f58; /* Dark Muted Gray */
+  --header-bg: rgba(11, 13, 16, 0.7);
+  --glass-bg: rgba(22, 27, 34, 0.8);
+  --glass-bg-hover: rgba(22, 27, 34, 0.95);
+
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom premium scrollbar using the new colors */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(69, 162, 158, 0.25);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(69, 162, 158, 0.5);
+}
+
+/* Animation utilities matching the new theme */
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 0 15px rgba(69, 162, 158, 0.15);
+    border-color: rgba(69, 162, 158, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(69, 162, 158, 0.35);
+    border-color: rgba(69, 162, 158, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(69, 162, 158, 0.15);
+    border-color: rgba(69, 162, 158, 0.3);
+  }
+}
+
+.glow-card {
+  animation: pulseGlow 6s infinite ease-in-out;
+}
+
+@keyframes textGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-text {
+  background: linear-gradient(
+    135deg,
+    var(--accent-teal) 0%,
+    var(--accent-amber) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textGradient 4s linear infinite;
+}
+
+/* Glassmorphism surfaces mapping to Middle Layer (#161b22) and Borders (#30363d) */
+.glass-panel {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-muted) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+
+.glass-panel-hover:hover {
+  background: var(--glass-bg-hover) !important;
+  border-color: var(--accent-teal) !important;
+  transform: translateY(-2px);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* Light theme overrides */
+.light-theme {
+  --bg-base: #f4f6f8; /* Light Gray Background */
+  --bg-container: #ffffff; /* Pure White Card/Container */
+  --bg-elevated: #f0f2f5; /* Modal / Elevated Surface */
+
+  --accent-teal: #0b8280; /* Darker Teal for Contrast */
+  --accent-amber: #e07a1a; /* Richer Amber for Contrast */
+  --border-muted: #e1e4e8; /* Light Muted Border */
+
+  --text-primary: #1f2328; /* Dark Charcoal Text */
+  --text-secondary: #57606a; /* Medium Gray Text */
+  --text-disabled: #8c959f; /* Light Disabled Gray */
+  --header-bg: rgba(244, 246, 248, 0.7);
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-bg-hover: rgba(255, 255, 255, 0.95);
+}
+
+/* Hide scrollbars for specific drawer panels */
+.no-scrollbar-drawer .ant-drawer-body::-webkit-scrollbar {
+  display: none !important;
+}
+.no-scrollbar-drawer .ant-drawer-body {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}

@@ -1,0 +1,23 @@
+/* Custom App styles */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-section {
+  padding: 64px 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.roast-card {
+  margin-top: 24px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.roast-badge {
+  font-weight: bold;
+}
