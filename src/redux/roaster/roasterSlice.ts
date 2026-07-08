@@ -5,12 +5,18 @@ import {
   buildRequestOTPCases,
   buildLoginUserCases,
   buildCreateTeacherCases,
+  buildFetchGradesCases,
+  buildCreateGradeStructureCases,
+  buildUpdateGradeStructureCases,
 } from "./roasterReducer";
 
 export {
   requestOTP,
   loginUser,
   createTeacher,
+  fetchGradesBySchool,
+  createGradeStructure,
+  updateGradeStructure,
 } from "../../repository/roaster/roasterThunks";
 
 export interface User {
@@ -29,8 +35,10 @@ interface RoasterState {
   currentSchool: User | null;
   tabs: { key: string; label: string; icon?: string }[];
   loading: boolean;
+  submitLoading: boolean;
   error: string | null;
   theme: "dark" | "light";
+  grades: any[];
 }
 
 const savedUser = loadLocalStorage<User | null>("currentUser", null);
@@ -53,8 +61,10 @@ const initialState: RoasterState = {
     savedUser?.is_admin,
   ),
   loading: false,
+  submitLoading: false,
   error: null,
   theme: savedTheme,
+  grades: [],
 };
 
 const roasterSlice = createSlice({
@@ -85,6 +95,9 @@ const roasterSlice = createSlice({
     buildRequestOTPCases(builder);
     buildLoginUserCases(builder);
     buildCreateTeacherCases(builder);
+    buildFetchGradesCases(builder);
+    buildCreateGradeStructureCases(builder);
+    buildUpdateGradeStructureCases(builder);
   },
 });
 

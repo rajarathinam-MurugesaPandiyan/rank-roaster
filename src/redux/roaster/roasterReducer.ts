@@ -3,6 +3,9 @@ import {
   requestOTP,
   loginUser,
   createTeacher,
+  fetchGradesBySchool,
+  createGradeStructure,
+  updateGradeStructure,
 } from "../../repository/roaster/roasterThunks";
 import { setCookie } from "../../helpers/cookies";
 import { saveLocalStorage } from "../../helpers/storage";
@@ -17,6 +20,7 @@ export const getTabsForRole = (role?: string, isAdmin?: boolean) => {
       { key: "students", label: "Students", icon: "students" },
       { key: "academic", label: "Academic", icon: "academic" },
       { key: "events", label: "Events", icon: "events" },
+      { key: "grades", label: "Grades", icon: "grades" },
     ];
   }
   if (normalizedRole === "student") {
@@ -101,6 +105,58 @@ export const buildCreateTeacherCases = (
     })
     .addCase(createTeacher.rejected, (state, action) => {
       state.loading = false;
+      state.error = action.payload as string;
+    });
+};
+
+export const buildFetchGradesCases = (
+  builder: ActionReducerMapBuilder<any>,
+) => {
+  builder
+    .addCase(fetchGradesBySchool.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    })
+    .addCase(fetchGradesBySchool.fulfilled, (state, action) => {
+      state.loading = false;
+      state.grades = action.payload || [];
+    })
+    .addCase(fetchGradesBySchool.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload as string;
+    });
+};
+
+export const buildCreateGradeStructureCases = (
+  builder: ActionReducerMapBuilder<any>,
+) => {
+  builder
+    .addCase(createGradeStructure.pending, (state) => {
+      state.submitLoading = true;
+      state.error = null;
+    })
+    .addCase(createGradeStructure.fulfilled, (state) => {
+      state.submitLoading = false;
+    })
+    .addCase(createGradeStructure.rejected, (state, action) => {
+      state.submitLoading = false;
+      state.error = action.payload as string;
+    });
+};
+
+export const buildUpdateGradeStructureCases = (
+  builder: ActionReducerMapBuilder<any>,
+) => {
+  builder
+    .addCase(updateGradeStructure.pending, (state) => {
+      state.submitLoading = true;
+      state.error = null;
+    })
+    .addCase(updateGradeStructure.fulfilled, (state) => {
+      state.submitLoading = false;
+    })
+    .addCase(updateGradeStructure.rejected, (state, action) => {
+      state.submitLoading = false;
       state.error = action.payload as string;
     });
 };

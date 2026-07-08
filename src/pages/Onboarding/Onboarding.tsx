@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Form,
@@ -12,6 +12,7 @@ import {
   message,
   Upload,
   Image,
+  Switch,
 } from "antd";
 import {
   UserAddOutlined,
@@ -23,20 +24,28 @@ import {
 import { useParams } from "react-router-dom";
 import { getCookie } from "../../helpers/cookies";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
-import { GRADES } from "../../redux/schoolSlice";
-import { createTeacher } from "../../redux/roaster/roasterSlice";
+import {
+  createTeacher,
+  fetchGradesBySchool,
+} from "../../redux/roaster/roasterSlice";
 
 const { Title, Paragraph } = Typography;
 const { Option } = Select;
 
 export const SchoolOnboarding: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { loading } = useAppSelector((state) => state.roaster);
+  const { loading, grades = [] } = useAppSelector((state) => state.roaster);
   const { schoolId } = useParams<{ schoolId: string }>();
   const [form] = Form.useForm();
   const [selectedRole, setSelectedRole] = useState("Student");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (schoolId) {
+      dispatch(fetchGradesBySchool(schoolId));
+    }
+  }, [schoolId, dispatch]);
 
   const onFinish = async (values: any) => {
     setSubmitting(true);
@@ -54,7 +63,7 @@ export const SchoolOnboarding: React.FC = () => {
         password: "TempPass@" + (values.phone || "1234567890"),
         phone: values.phone,
         role: values.role.toLowerCase(),
-        is_admin: false,
+        is_admin: values.role === "Teacher" ? !!values.is_admin : false,
         grade: values.role === "Student" ? values.grade : "N/A",
         subject: values.role === "Teacher" ? values.subject : "",
         department: values.role === "Staff" ? values.department : "",
@@ -130,7 +139,10 @@ export const SchoolOnboarding: React.FC = () => {
                 </span>
               </Space>
             }
-            style={{ background: "var(--bg-container)", border: "1px solid var(--border-muted)" }}
+            style={{
+              background: "var(--bg-container)",
+              border: "1px solid var(--border-muted)",
+            }}
           >
             <Form
               form={form}
@@ -142,6 +154,7 @@ export const SchoolOnboarding: React.FC = () => {
                 grade: "Grade 10",
                 status: "Pending",
                 country: "India",
+                is_admin: false,
               }}
               requiredMark={false}
             >
@@ -152,7 +165,11 @@ export const SchoolOnboarding: React.FC = () => {
                 <Col xs={24} md={8}>
                   <Form.Item
                     name="name"
-                    label={<span style={{ color: "var(--text-secondary)" }}>Full Name</span>}
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Full Name
+                      </span>
+                    }
                     rules={[
                       { required: true, message: "Please input the name!" },
                     ]}
@@ -172,7 +189,9 @@ export const SchoolOnboarding: React.FC = () => {
                   <Form.Item
                     name="email"
                     label={
-                      <span style={{ color: "var(--text-secondary)" }}>Email Address</span>
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Email Address
+                      </span>
                     }
                     rules={[
                       { required: true, message: "Please input the email!" },
@@ -194,7 +213,9 @@ export const SchoolOnboarding: React.FC = () => {
                   <Form.Item
                     name="phone"
                     label={
-                      <span style={{ color: "var(--text-secondary)" }}>Phone Number</span>
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Phone Number
+                      </span>
                     }
                     rules={[
                       {
@@ -216,10 +237,14 @@ export const SchoolOnboarding: React.FC = () => {
                 </Col>
               </Row>
               <Row gutter={16}>
-                <Col xs={24} md={12}>
+                <Col xs={24} md={8}>
                   <Form.Item
                     name="role"
-                    label={<span style={{ color: "var(--text-secondary)" }}>Role</span>}
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Role
+                      </span>
+                    }
                     rules={[{ required: true }]}
                   >
                     <Select
@@ -233,7 +258,30 @@ export const SchoolOnboarding: React.FC = () => {
                     </Select>
                   </Form.Item>
                 </Col>
-                <Col xs={24} md={12}>
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    name="gender"
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Gender
+                      </span>
+                    }
+                    rules={[
+                      { required: true, message: "Please select the gender!" },
+                    ]}
+                  >
+                    <Select
+                      placeholder="Select Gender"
+                      style={{ width: "100%" }}
+                      dropdownStyle={{ background: "var(--bg-elevated)" }}
+                    >
+                      <Option value="male">Male</Option>
+                      <Option value="female">Female</Option>
+                      <Option value="other">Other</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={8}>
                   <Form.Item
                     name="altPhone"
                     label={
@@ -266,7 +314,9 @@ export const SchoolOnboarding: React.FC = () => {
                   <Form.Item
                     name="address"
                     label={
-                      <span style={{ color: "var(--text-secondary)" }}>Street Address</span>
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Street Address
+                      </span>
                     }
                     rules={[
                       { required: true, message: "Please input the address!" },
@@ -286,7 +336,11 @@ export const SchoolOnboarding: React.FC = () => {
                 <Col xs={24} md={4}>
                   <Form.Item
                     name="city"
-                    label={<span style={{ color: "var(--text-secondary)" }}>City</span>}
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        City
+                      </span>
+                    }
                     rules={[
                       { required: true, message: "Please input the city!" },
                     ]}
@@ -305,7 +359,11 @@ export const SchoolOnboarding: React.FC = () => {
                 <Col xs={24} md={4}>
                   <Form.Item
                     name="state"
-                    label={<span style={{ color: "var(--text-secondary)" }}>State</span>}
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        State
+                      </span>
+                    }
                     rules={[
                       { required: true, message: "Please input the state!" },
                     ]}
@@ -324,7 +382,11 @@ export const SchoolOnboarding: React.FC = () => {
                 <Col xs={24} md={4}>
                   <Form.Item
                     name="country"
-                    label={<span style={{ color: "var(--text-secondary)" }}>Country</span>}
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Country
+                      </span>
+                    }
                     rules={[{ required: true }]}
                   >
                     <Input
@@ -367,9 +429,20 @@ export const SchoolOnboarding: React.FC = () => {
                           style={{ width: "100%" }}
                           dropdownStyle={{ background: "var(--bg-elevated)" }}
                         >
-                          {GRADES.map((grade) => (
-                            <Option key={grade} value={grade}>
-                              {grade}
+                          {grades.map((grade: any) => (
+                            <Option key={grade.id} value={grade.name}>
+                              <Space>
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: "50%",
+                                    backgroundColor: grade.color || "#45a29e",
+                                  }}
+                                />
+                                <span>{grade.name}</span>
+                              </Space>
                             </Option>
                           ))}
                         </Select>
@@ -405,7 +478,9 @@ export const SchoolOnboarding: React.FC = () => {
                       <Form.Item
                         name="parentName"
                         label={
-                          <span style={{ color: "var(--text-secondary)" }}>Parent Name</span>
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Parent Name
+                          </span>
                         }
                         rules={[
                           {
@@ -429,7 +504,9 @@ export const SchoolOnboarding: React.FC = () => {
                       <Form.Item
                         name="parentEmail"
                         label={
-                          <span style={{ color: "var(--text-secondary)" }}>Parent Email</span>
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Parent Email
+                          </span>
                         }
                         rules={[
                           {
@@ -457,7 +534,9 @@ export const SchoolOnboarding: React.FC = () => {
                       <Form.Item
                         name="parentPhone"
                         label={
-                          <span style={{ color: "var(--text-secondary)" }}>Parent Phone</span>
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Parent Phone
+                          </span>
                         }
                         rules={[
                           {
@@ -575,6 +654,24 @@ export const SchoolOnboarding: React.FC = () => {
                       </Form.Item>
                     </Col>
                   </Row>
+                  <Row gutter={16} style={{ marginTop: 8 }}>
+                    <Col xs={24} md={6}>
+                      <Form.Item
+                        name="is_admin"
+                        valuePropName="checked"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Administrator Role
+                          </span>
+                        }
+                      >
+                        <Switch
+                          checkedChildren="ADMIN"
+                          unCheckedChildren="STAFF"
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
                 </>
               )}
 
@@ -595,7 +692,9 @@ export const SchoolOnboarding: React.FC = () => {
                       <Form.Item
                         name="department"
                         label={
-                          <span style={{ color: "var(--text-secondary)" }}>Department</span>
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Department
+                          </span>
                         }
                         rules={[
                           {
@@ -841,7 +940,9 @@ export const SchoolOnboarding: React.FC = () => {
                                       style={{
                                         background: "var(--bg-elevated)",
                                         border: "1px solid var(--border-muted)",
-                                        color: fileUrl ? "#45a29e" : "var(--text-secondary)",
+                                        color: fileUrl
+                                          ? "#45a29e"
+                                          : "var(--text-secondary)",
                                         borderRadius: 8,
                                         textAlign: "left",
                                       }}
@@ -903,7 +1004,9 @@ export const SchoolOnboarding: React.FC = () => {
                   <Form.Item
                     name="status"
                     label={
-                      <span style={{ color: "var(--text-secondary)" }}>Initial Status</span>
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Initial Status
+                      </span>
                     }
                     rules={[{ required: true }]}
                   >
