@@ -1,0 +1,293 @@
+import React, { useState, useEffect } from "react";
+import {
+  Table,
+  Typography,
+  Card,
+  message,
+  Space,
+  Input,
+  Select,
+  Row,
+  Col,
+} from "antd";
+import { TeamOutlined } from "@ant-design/icons";
+import { useAppDispatch, useAppSelector } from "../../redux/store";
+import { fetchStudents, clearError } from "../../redux/students/studentsSlice";
+import { fetchGradesBySchool } from "../../redux/roaster/roasterSlice";
+import type { StudentItem } from "../../redux/students/studentsSlice";
+import { StatusTag } from "../../atoms/StatusTag";
+import { StudentDetailDrawer } from "./StudentDetailDrawer";
+
+const { Title, Paragraph } = Typography;
+
+export const StudentsList: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const { students, total, loading, error } = useAppSelector(
+    (state) => state.students
+  );
+  const { grades = [] } = useAppSelector((state) => state.roaster);
+
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [search, setSearch] = useState("");
+  const [gradeId, setGradeId] = useState("");
+  const [status, setStatus] = useState("");
+
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(
+    null
+  );
+
+  const handleRowClick = (record: StudentItem) => {
+    setSelectedStudent(record);
+    setDrawerVisible(true);
+  };
+
+  const { currentUser, currentSchool } = useAppSelector(
+    (state) => state.roaster
+  );
+
+  const schoolId =
+    currentUser?.school_id || currentSchool?.school_id || currentSchool?.id;
+
+  // Load grades for dropdown on mount
+  useEffect(() => {
+    if (schoolId) {
+      dispatch(fetchGradesBySchool(schoolId));
+    }
+  }, [schoolId, dispatch]);
+
+  // Load students based on selected school, grade, and query filters
+  useEffect(() => {
+    if (schoolId) {
+      dispatch(
+        fetchStudents({
+          schoolId,
+          gradeId: gradeId || undefined,
+          page,
+          limit,
+          search,
+          status: status || undefined,
+        })
+      );
+    }
+  }, [schoolId, gradeId, page, limit, search, status, dispatch]);
+
+  // Error handling
+  useEffect(() => {
+    if (error) {
+      message.error(error);
+      dispatch(clearError());
+    }
+  }, [error, dispatch]);
+
+  const columns = [
+    {
+      title: "Name",
+      key: "fullName",
+      render: (_: any, record: StudentItem) => (
+        <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+          {record.fullName || `${record.firstName} ${record.lastName}`}
+        </span>
+      ),
+    },
+    {
+      title: "Admission No",
+      dataIndex: "admissionNo",
+      key: "admissionNo",
+      render: (text: string) => (
+        <span style={{ color: "var(--text-secondary)" }}>{text || "—"}</span>
+      ),
+    },
+    {
+      title: "Roll No",
+      dataIndex: "rollNo",
+      key: "rollNo",
+      render: (text: string) => (
+        <span style={{ color: "var(--text-secondary)" }}>{text || "—"}</span>
+      ),
+    },
+    {
+      title: "Grade",
+      dataIndex: "gradeId",
+      key: "gradeId",
+      render: (gId: string) => {
+        const gradeObj = grades.find((g: any) => g.id === gId);
+        return (
+          <span style={{ color: "#45a29e", fontWeight: 500 }}>
+            {gradeObj ? gradeObj.name : "Unassigned"}
+          </span>
+        );
+      },
+    },
+    {
+      title: "Gender",
+      dataIndex: "gender",
+      key: "gender",
+      render: (text: string) => (
+        <span style={{ color: "var(--text-secondary)", textTransform: "capitalize" }}>
+          {text || "—"}
+        </span>
+      ),
+    },
+    {
+      title: "Parents Contact",
+      key: "parents",
+      render: (_: any, record: StudentItem) => (
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ color: "var(--text-primary)", fontSize: "12px", fontWeight: 500 }}>
+            F: {record.fatherName || "—"}
+          </span>
+          <span style={{ color: "var(--text-secondary)", fontSize: "11px" }}>
+            M: {record.motherName || "—"}
+          </span>
+        </div>
+      ),
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (status: string) => <StatusTag status={status || "Active"} />,
+    },
+  ];
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <Title
+          level={2}
+          style={{
+            margin: 0,
+            fontFamily: "var(--font-display)",
+            color: "var(--text-primary)",
+            fontWeight: 700,
+          }}
+        >
+          School Students
+        </Title>
+        <Paragraph style={{ color: "var(--text-secondary)", marginTop: 4 }}>
+          Browse, filter, and view student directory profiles in this school.
+        </Paragraph>
+      </div>
+
+      <Card
+        title={
+          <Space>
+            <TeamOutlined style={{ color: "#45a29e" }} />
+            <span style={{ color: "var(--text-primary)" }}>
+              Students Directory
+            </span>
+          </Space>
+        }
+        style={{
+          background: "var(--bg-container)",
+          border: "1px solid var(--border-muted)",
+          borderRadius: 12,
+        }}
+      >
+        <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+          <Col xs={24} sm={12} md={6}>
+            <Select
+              placeholder="Select Grade"
+              allowClear
+              size="large"
+              value={gradeId || undefined}
+              onChange={(value) => {
+                setGradeId(value || "");
+                setPage(1);
+              }}
+              style={{ width: "100%" }}
+              dropdownStyle={{ background: "var(--bg-elevated)" }}
+            >
+              {grades.map((grade: any) => (
+                <Select.Option key={grade.id} value={grade.id}>
+                  <Space>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        backgroundColor: grade.color || "#45a29e",
+                      }}
+                    />
+                    <span>{grade.name}</span>
+                  </Space>
+                </Select.Option>
+              ))}
+            </Select>
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Input.Search
+              placeholder="Search by name or admission number..."
+              allowClear
+              size="large"
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              onSearch={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
+              style={{ width: "100%" }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Select
+              placeholder="Filter by Status"
+              allowClear
+              size="large"
+              onChange={(value) => {
+                setStatus(value || "");
+                setPage(1);
+              }}
+              style={{ width: "100%" }}
+              dropdownStyle={{ background: "var(--bg-elevated)" }}
+              options={[
+                { label: "Active", value: "Active" },
+                { label: "Inactive", value: "Inactive" },
+                { label: "Graduated", value: "Graduated" },
+                { label: "Transferred", value: "Transferred" },
+              ]}
+            />
+          </Col>
+        </Row>
+
+        <Table
+          dataSource={students.map((s) => ({ ...s, key: s.id }))}
+          columns={columns}
+          loading={loading}
+          pagination={{
+            current: page,
+            pageSize: limit,
+            total: total,
+            showSizeChanger: true,
+            onChange: (p, l) => {
+              setPage(p);
+              setLimit(l);
+            },
+          }}
+          scroll={{ x: true }}
+          style={{ background: "transparent" }}
+          onRow={(record) => ({
+            onClick: () => handleRowClick(record),
+            style: { cursor: "pointer" },
+          })}
+        />
+      </Card>
+
+      <StudentDetailDrawer
+        visible={drawerVisible}
+        onClose={() => {
+          setDrawerVisible(false);
+          setSelectedStudent(null);
+        }}
+        student={selectedStudent}
+      />
+    </div>
+  );
+};
+
+export default StudentsList;

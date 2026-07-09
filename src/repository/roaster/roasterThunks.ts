@@ -70,3 +70,63 @@ export const createTeacher = createAsyncThunk(
     }
   }
 );
+
+export const fetchGradesBySchool = createAsyncThunk(
+  "roaster/fetchGradesBySchool",
+  async (schoolId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/api/v1/grades/school/${schoolId}`);
+      return response.data;
+    } catch (err: any) {
+      const message = err.response?.data?.error || err.message || "Failed to load grades";
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const createGradeStructure = createAsyncThunk(
+  "roaster/createGradeStructure",
+  async (
+    payload: {
+      school_id: string;
+      name: string;
+      color: string;
+      tuition_fee: number;
+      subjects: any[];
+    },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await api.post("/api/v1/grades/create", payload);
+      return response.data;
+    } catch (err: any) {
+      const message = err.response?.data?.error || err.message || "Failed to create grade structure";
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const updateGradeStructure = createAsyncThunk(
+  "roaster/updateGradeStructure",
+  async (
+    payload: {
+      id: string;
+      name: string;
+      color: string;
+      tuition_fee: number;
+      subjects: any[];
+    },
+    { rejectWithValue },
+  ) => {
+    try {
+      const { id, ...data } = payload;
+      const response = await api.put(`/api/v1/grades/${id}`, data);
+      return response.data;
+    } catch (err: any) {
+      const message = err.response?.data?.error || err.message || "Failed to update grade structure";
+      return rejectWithValue(message);
+    }
+  }
+);
+
+

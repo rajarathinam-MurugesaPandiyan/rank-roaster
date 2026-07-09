@@ -42,10 +42,24 @@ export interface ClassItem {
   schedule: string;
 }
 
+export interface SubjectItem {
+  name: string;
+  teacherId: string;
+  teacherName: string;
+}
+
+export interface GradeStructureItem {
+  id: string;
+  gradeName: string;
+  fees: number;
+  subjects: SubjectItem[];
+}
+
 interface SchoolState {
   activeSchool: string;
   students: Student[];
   classes: ClassItem[];
+  gradesList: GradeStructureItem[];
 }
 
 const INITIAL_STUDENTS: Student[] = [
@@ -122,10 +136,32 @@ const INITIAL_CLASSES: ClassItem[] = [
   },
 ];
 
+const INITIAL_GRADES_LIST: GradeStructureItem[] = [
+  {
+    id: "g1",
+    gradeName: "Grade 10",
+    fees: 15000,
+    subjects: [
+      { name: "Mathematics", teacherId: "t1", teacherName: "Dr. Sarah Jenkins" },
+      { name: "Physics", teacherId: "t2", teacherName: "Prof. Robert Boyle" },
+    ],
+  },
+  {
+    id: "g2",
+    gradeName: "Grade 11",
+    fees: 18000,
+    subjects: [
+      { name: "Chemistry", teacherId: "t2", teacherName: "Prof. Robert Boyle" },
+      { name: "English Literature", teacherId: "t3", teacherName: "Mr. John Keats" },
+    ],
+  },
+];
+
 const initialState: SchoolState = {
   activeSchool: "",
   students: [],
   classes: [],
+  gradesList: [],
 };
 
 const schoolSlice = createSlice({
@@ -136,9 +172,10 @@ const schoolSlice = createSlice({
       const schoolId = action.payload;
       state.activeSchool = schoolId;
 
-      // Load specific school students/classes from localStorage
+      // Load specific school students/classes/grades from localStorage
       const studentsKey = `school_${schoolId}_students`;
       const classesKey = `school_${schoolId}_classes`;
+      const gradesKey = `school_${schoolId}_grades`;
 
       const savedStudents = loadLocalStorage<Student[] | null>(
         studentsKey,
@@ -160,6 +197,17 @@ const schoolSlice = createSlice({
       } else {
         state.classes = INITIAL_CLASSES;
         saveLocalStorage(classesKey, INITIAL_CLASSES);
+      }
+
+      const savedGrades = loadLocalStorage<GradeStructureItem[] | null>(
+        gradesKey,
+        null,
+      );
+      if (savedGrades) {
+        state.gradesList = savedGrades;
+      } else {
+        state.gradesList = INITIAL_GRADES_LIST;
+        saveLocalStorage(gradesKey, INITIAL_GRADES_LIST);
       }
     },
     addStudent(state, action: PayloadAction<Omit<Student, "id" | "date">>) {
@@ -183,10 +231,21 @@ const schoolSlice = createSlice({
       state.classes.push(newClass);
       saveLocalStorage(`school_${state.activeSchool}_classes`, state.classes);
     },
+    addGradeStructure(
+      state,
+      action: PayloadAction<Omit<GradeStructureItem, "id">>,
+    ) {
+      const newGrade: GradeStructureItem = {
+        ...action.payload,
+        id: Math.random().toString(36).substr(2, 9),
+      };
+      state.gradesList.push(newGrade);
+      saveLocalStorage(`school_${state.activeSchool}_grades`, state.gradesList);
+    },
   },
 });
 
-export const { initializeSchool, addStudent, addClass } = schoolSlice.actions;
+export const { initializeSchool, addStudent, addClass, addGradeStructure } = schoolSlice.actions;
 export default schoolSlice.reducer;
 
 export const GRADES = [

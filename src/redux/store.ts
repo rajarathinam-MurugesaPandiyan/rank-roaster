@@ -4,12 +4,14 @@ import type { TypedUseSelectorHook } from "react-redux";
 import schoolReducer from "./schoolSlice";
 import roasterReducer from "./roaster/roasterSlice";
 import teachersReducer from "./teachers/teachersSlice";
+import studentsReducer from "./students/studentsSlice";
 
 export const store = configureStore({
   reducer: {
     school: schoolReducer,
     roaster: roasterReducer,
     teachers: teachersReducer,
+    students: studentsReducer,
   },
 });
 

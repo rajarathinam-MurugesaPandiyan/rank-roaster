@@ -7,6 +7,8 @@ import { SchoolClasses } from "../pages/Classes/Classes";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { TeachersList } from "../pages/Teachers/TeachersList";
 import { SchoolGrades } from "../pages/Grades/Grades";
+import { GradesPage } from "../pages/Grades/GradesPage";
+import { StudentsList } from "../pages/Students/StudentsList";
 
 export const AppRoutes = () => {
   return (
@@ -23,7 +25,9 @@ export const AppRoutes = () => {
             <Route path="onboarding" element={<SchoolOnboarding />} />
             <Route path="classes" element={<SchoolClasses />} />
             <Route path="teachers" element={<TeachersList />} />
+            <Route path="students" element={<StudentsList />} />
             <Route path="academic" element={<SchoolGrades />} />
+            <Route path="grades" element={<GradesPage />} />
           </Route>
         </Route>
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Form,
@@ -12,6 +12,7 @@ import {
   message,
   Upload,
   Image,
+  Switch,
 } from "antd";
 import {
   UserAddOutlined,
@@ -23,20 +24,29 @@ import {
 import { useParams } from "react-router-dom";
 import { getCookie } from "../../helpers/cookies";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
-import { GRADES } from "../../redux/schoolSlice";
-import { createTeacher } from "../../redux/roaster/roasterSlice";
+import {
+  createTeacher,
+  fetchGradesBySchool,
+} from "../../redux/roaster/roasterSlice";
+import { createStudent } from "../../redux/students/studentsSlice";
 
 const { Title, Paragraph } = Typography;
 const { Option } = Select;
 
 export const SchoolOnboarding: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { loading } = useAppSelector((state) => state.roaster);
+  const { loading, grades = [] } = useAppSelector((state) => state.roaster);
   const { schoolId } = useParams<{ schoolId: string }>();
   const [form] = Form.useForm();
   const [selectedRole, setSelectedRole] = useState("Student");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (schoolId) {
+      dispatch(fetchGradesBySchool(schoolId));
+    }
+  }, [schoolId, dispatch]);
 
   const onFinish = async (values: any) => {
     setSubmitting(true);
@@ -49,21 +59,21 @@ export const SchoolOnboarding: React.FC = () => {
       const finalSchoolId = schoolId || "";
       const payload = {
         school_id: finalSchoolId,
-        name: values.name,
+        name: `${values.firstName} ${values.lastName}`.trim(),
         email: values.email,
         password: "TempPass@" + (values.phone || "1234567890"),
         phone: values.phone,
         role: values.role.toLowerCase(),
-        is_admin: false,
+        is_admin: values.role === "Teacher" ? !!values.is_admin : false,
         grade: values.role === "Student" ? values.grade : "N/A",
         subject: values.role === "Teacher" ? values.subject : "",
         department: values.role === "Staff" ? values.department : "",
         parent_contact:
           values.role === "Student"
             ? {
-                name: values.parentName,
-                email: values.parentEmail,
-                phone: values.parentPhone,
+                name: values.fatherName || values.motherName || "",
+                email: values.fatherEmail || values.motherEmail || "",
+                phone: values.fatherPhone || values.motherPhone || "",
               }
             : { name: "", email: "", phone: "" },
         documents: (values.documents || []).map((doc: any) => ({
@@ -83,14 +93,71 @@ export const SchoolOnboarding: React.FC = () => {
         gender: values.gender || "",
       };
 
-      if (values.role.toLowerCase() === "teacher") {
-        dispatch(createTeacher(payload));
-      }
+      if (values.role.toLowerCase() === "student") {
+        const firstName = values.firstName || "";
+        const lastName = values.lastName || "";
 
-      message.success(
-        `Successfully onboarded ${values.name} as ${values.role} in database!`,
-      );
-      form.resetFields();
+        const dobDate = new Date(values.dob);
+        const dobISO = dobDate.toISOString();
+
+        const studentPayload = {
+          schoolId: finalSchoolId,
+          gradeId: values.grade,
+          admissionNo: values.admissionNo || "",
+          rollNo: values.rollNo || "",
+          firstName: firstName,
+          lastName: lastName,
+          gender: values.gender,
+          dateOfBirth: dobISO,
+          email: values.email,
+          phone: values.phone,
+          fatherName: values.fatherName,
+          fatherPhone: values.fatherPhone,
+          fatherEmail: values.fatherEmail || "",
+          motherName: values.motherName,
+          motherPhone: values.motherPhone,
+          motherEmail: values.motherEmail || "",
+          guardianName: values.guardianName || "",
+          guardianPhone: values.guardianPhone || "",
+          guardianEmail: values.guardianEmail || "",
+          guardianRelation: values.guardianRelation || "",
+          address: values.address,
+          bloodGroup: values.bloodGroup || "",
+          photoUrl: "",
+          status: "Active",
+          joinedAt: new Date().toISOString(),
+          password: "TempPass@" + (values.phone || "1234567890"),
+        };
+
+        const resultAction = await dispatch(createStudent(studentPayload));
+        if (createStudent.fulfilled.match(resultAction)) {
+          message.success(
+            `Successfully onboarded student ${values.name} in database!`,
+          );
+          form.resetFields();
+        } else {
+          const errorMsg =
+            (resultAction.payload as string) || "Failed to onboard student";
+          message.error(errorMsg);
+        }
+      } else if (values.role.toLowerCase() === "teacher") {
+        const resultAction = await dispatch(createTeacher(payload));
+        if (createTeacher.fulfilled.match(resultAction)) {
+          message.success(
+            `Successfully onboarded teacher ${values.name} as teacher in database!`,
+          );
+          form.resetFields();
+        } else {
+          const errorMsg =
+            (resultAction.payload as string) || "Failed to onboard teacher";
+          message.error(errorMsg);
+        }
+      } else {
+        message.success(
+          `Successfully onboarded ${values.name} as ${values.role} in database!`,
+        );
+        form.resetFields();
+      }
     } catch (err: any) {
       message.error(err.message || "An error occurred during onboarding.");
     } finally {
@@ -130,7 +197,10 @@ export const SchoolOnboarding: React.FC = () => {
                 </span>
               </Space>
             }
-            style={{ background: "var(--bg-container)", border: "1px solid var(--border-muted)" }}
+            style={{
+              background: "var(--bg-container)",
+              border: "1px solid var(--border-muted)",
+            }}
           >
             <Form
               form={form}
@@ -142,6 +212,7 @@ export const SchoolOnboarding: React.FC = () => {
                 grade: "Grade 10",
                 status: "Pending",
                 country: "India",
+                is_admin: false,
               }}
               requiredMark={false}
             >
@@ -149,16 +220,20 @@ export const SchoolOnboarding: React.FC = () => {
                 Basic Information
               </Title>
               <Row gutter={[16, 16]}>
-                <Col xs={24} md={8}>
+                <Col xs={24} md={6}>
                   <Form.Item
-                    name="name"
-                    label={<span style={{ color: "var(--text-secondary)" }}>Full Name</span>}
+                    name="firstName"
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        First Name
+                      </span>
+                    }
                     rules={[
-                      { required: true, message: "Please input the name!" },
+                      { required: true, message: "Please input the first name!" },
                     ]}
                   >
                     <Input
-                      placeholder="e.g. John Doe"
+                      placeholder="e.g. John"
                       style={{
                         background: "var(--bg-elevated)",
                         border: "1px solid var(--border-muted)",
@@ -168,11 +243,36 @@ export const SchoolOnboarding: React.FC = () => {
                     />
                   </Form.Item>
                 </Col>
-                <Col xs={24} md={8}>
+                <Col xs={24} md={6}>
+                  <Form.Item
+                    name="lastName"
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Last Name
+                      </span>
+                    }
+                    rules={[
+                      { required: true, message: "Please input the last name!" },
+                    ]}
+                  >
+                    <Input
+                      placeholder="e.g. Doe"
+                      style={{
+                        background: "var(--bg-elevated)",
+                        border: "1px solid var(--border-muted)",
+                        color: "var(--text-primary)",
+                        borderRadius: 8,
+                      }}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={6}>
                   <Form.Item
                     name="email"
                     label={
-                      <span style={{ color: "var(--text-secondary)" }}>Email Address</span>
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Email Address
+                      </span>
                     }
                     rules={[
                       { required: true, message: "Please input the email!" },
@@ -190,11 +290,13 @@ export const SchoolOnboarding: React.FC = () => {
                     />
                   </Form.Item>
                 </Col>
-                <Col xs={24} md={8}>
+                <Col xs={24} md={6}>
                   <Form.Item
                     name="phone"
                     label={
-                      <span style={{ color: "var(--text-secondary)" }}>Phone Number</span>
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Phone Number
+                      </span>
                     }
                     rules={[
                       {
@@ -216,10 +318,14 @@ export const SchoolOnboarding: React.FC = () => {
                 </Col>
               </Row>
               <Row gutter={16}>
-                <Col xs={24} md={12}>
+                <Col xs={24} md={8}>
                   <Form.Item
                     name="role"
-                    label={<span style={{ color: "var(--text-secondary)" }}>Role</span>}
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Role
+                      </span>
+                    }
                     rules={[{ required: true }]}
                   >
                     <Select
@@ -233,7 +339,30 @@ export const SchoolOnboarding: React.FC = () => {
                     </Select>
                   </Form.Item>
                 </Col>
-                <Col xs={24} md={12}>
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    name="gender"
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Gender
+                      </span>
+                    }
+                    rules={[
+                      { required: true, message: "Please select the gender!" },
+                    ]}
+                  >
+                    <Select
+                      placeholder="Select Gender"
+                      style={{ width: "100%" }}
+                      dropdownStyle={{ background: "var(--bg-elevated)" }}
+                    >
+                      <Option value="male">Male</Option>
+                      <Option value="female">Female</Option>
+                      <Option value="other">Other</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={8}>
                   <Form.Item
                     name="altPhone"
                     label={
@@ -266,7 +395,9 @@ export const SchoolOnboarding: React.FC = () => {
                   <Form.Item
                     name="address"
                     label={
-                      <span style={{ color: "var(--text-secondary)" }}>Street Address</span>
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Street Address
+                      </span>
                     }
                     rules={[
                       { required: true, message: "Please input the address!" },
@@ -286,7 +417,11 @@ export const SchoolOnboarding: React.FC = () => {
                 <Col xs={24} md={4}>
                   <Form.Item
                     name="city"
-                    label={<span style={{ color: "var(--text-secondary)" }}>City</span>}
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        City
+                      </span>
+                    }
                     rules={[
                       { required: true, message: "Please input the city!" },
                     ]}
@@ -305,7 +440,11 @@ export const SchoolOnboarding: React.FC = () => {
                 <Col xs={24} md={4}>
                   <Form.Item
                     name="state"
-                    label={<span style={{ color: "var(--text-secondary)" }}>State</span>}
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        State
+                      </span>
+                    }
                     rules={[
                       { required: true, message: "Please input the state!" },
                     ]}
@@ -324,7 +463,11 @@ export const SchoolOnboarding: React.FC = () => {
                 <Col xs={24} md={4}>
                   <Form.Item
                     name="country"
-                    label={<span style={{ color: "var(--text-secondary)" }}>Country</span>}
+                    label={
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Country
+                      </span>
+                    }
                     rules={[{ required: true }]}
                   >
                     <Input
@@ -350,7 +493,7 @@ export const SchoolOnboarding: React.FC = () => {
                       marginBottom: 16,
                     }}
                   >
-                    Student & Parent Details
+                    Student Details
                   </Title>
                   <Row gutter={16}>
                     <Col xs={24} md={6}>
@@ -361,15 +504,28 @@ export const SchoolOnboarding: React.FC = () => {
                             Grade / Target
                           </span>
                         }
-                        rules={[{ required: true }]}
+                        rules={[
+                          { required: true, message: "Please select a grade!" },
+                        ]}
                       >
                         <Select
                           style={{ width: "100%" }}
                           dropdownStyle={{ background: "var(--bg-elevated)" }}
                         >
-                          {GRADES.map((grade) => (
-                            <Option key={grade} value={grade}>
-                              {grade}
+                          {grades.map((grade: any) => (
+                            <Option key={grade.id} value={grade.id}>
+                              <Space>
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: "50%",
+                                    backgroundColor: grade.color || "#45a29e",
+                                  }}
+                                />
+                                <span>{grade.name}</span>
+                              </Space>
                             </Option>
                           ))}
                         </Select>
@@ -401,21 +557,17 @@ export const SchoolOnboarding: React.FC = () => {
                         />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} md={4}>
+                    <Col xs={24} md={6}>
                       <Form.Item
-                        name="parentName"
+                        name="admissionNo"
                         label={
-                          <span style={{ color: "var(--text-secondary)" }}>Parent Name</span>
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Admission Number
+                          </span>
                         }
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please input parent's name!",
-                          },
-                        ]}
                       >
                         <Input
-                          placeholder="Parent Name"
+                          placeholder="e.g. ADM1001"
                           style={{
                             background: "var(--bg-elevated)",
                             border: "1px solid var(--border-muted)",
@@ -425,17 +577,124 @@ export const SchoolOnboarding: React.FC = () => {
                         />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} md={4}>
+                    <Col xs={24} md={6}>
                       <Form.Item
-                        name="parentEmail"
+                        name="rollNo"
                         label={
-                          <span style={{ color: "var(--text-secondary)" }}>Parent Email</span>
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Roll Number
+                          </span>
+                        }
+                      >
+                        <Input
+                          type="number"
+                          placeholder="e.g. 15"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={16}>
+                    <Col xs={24} md={6}>
+                      <Form.Item
+                        name="bloodGroup"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Blood Group
+                          </span>
+                        }
+                      >
+                        <Input
+                          placeholder="e.g. O+"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Title
+                    level={5}
+                    style={{
+                      color: "#45a29e",
+                      marginTop: 16,
+                      marginBottom: 16,
+                    }}
+                  >
+                    Father Details
+                  </Title>
+                  <Row gutter={16}>
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="fatherName"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Father's Name
+                          </span>
                         }
                         rules={[
                           {
                             required: true,
-                            message: "Please input parent's email!",
+                            message: "Please input father's name!",
                           },
+                        ]}
+                      >
+                        <Input
+                          placeholder="Father's Name"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="fatherPhone"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Father's Phone
+                          </span>
+                        }
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input father's phone number!",
+                          },
+                        ]}
+                      >
+                        <Input
+                          placeholder="Father's Phone"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="fatherEmail"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Father's Email
+                          </span>
+                        }
+                        rules={[
                           {
                             type: "email",
                             message: "Please input a valid email!",
@@ -443,7 +702,7 @@ export const SchoolOnboarding: React.FC = () => {
                         ]}
                       >
                         <Input
-                          placeholder="parent@email.com"
+                          placeholder="father@email.com"
                           style={{
                             background: "var(--bg-elevated)",
                             border: "1px solid var(--border-muted)",
@@ -453,21 +712,187 @@ export const SchoolOnboarding: React.FC = () => {
                         />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} md={4}>
+                  </Row>
+
+                  <Title
+                    level={5}
+                    style={{
+                      color: "#45a29e",
+                      marginTop: 16,
+                      marginBottom: 16,
+                    }}
+                  >
+                    Mother Details
+                  </Title>
+                  <Row gutter={16}>
+                    <Col xs={24} md={8}>
                       <Form.Item
-                        name="parentPhone"
+                        name="motherName"
                         label={
-                          <span style={{ color: "var(--text-secondary)" }}>Parent Phone</span>
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Mother's Name
+                          </span>
                         }
                         rules={[
                           {
                             required: true,
-                            message: "Please input parent's phone number!",
+                            message: "Please input mother's name!",
                           },
                         ]}
                       >
                         <Input
-                          placeholder="Parent Phone"
+                          placeholder="Mother's Name"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="motherPhone"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Mother's Phone
+                          </span>
+                        }
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input mother's phone number!",
+                          },
+                        ]}
+                      >
+                        <Input
+                          placeholder="Mother's Phone"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="motherEmail"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Mother's Email
+                          </span>
+                        }
+                        rules={[
+                          {
+                            type: "email",
+                            message: "Please input a valid email!",
+                          },
+                        ]}
+                      >
+                        <Input
+                          placeholder="mother@email.com"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Title
+                    level={5}
+                    style={{
+                      color: "#45a29e",
+                      marginTop: 16,
+                      marginBottom: 16,
+                    }}
+                  >
+                    Guardian Details (Optional)
+                  </Title>
+                  <Row gutter={16}>
+                    <Col xs={24} md={6}>
+                      <Form.Item
+                        name="guardianName"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Guardian's Name
+                          </span>
+                        }
+                      >
+                        <Input
+                          placeholder="Guardian's Name"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={6}>
+                      <Form.Item
+                        name="guardianPhone"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Guardian's Phone
+                          </span>
+                        }
+                      >
+                        <Input
+                          placeholder="Guardian's Phone"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={6}>
+                      <Form.Item
+                        name="guardianEmail"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Guardian's Email
+                          </span>
+                        }
+                        rules={[
+                          {
+                            type: "email",
+                            message: "Please input a valid email!",
+                          },
+                        ]}
+                      >
+                        <Input
+                          placeholder="guardian@email.com"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={6}>
+                      <Form.Item
+                        name="guardianRelation"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Guardian Relation
+                          </span>
+                        }
+                      >
+                        <Input
+                          placeholder="e.g. Uncle, Aunt"
                           style={{
                             background: "var(--bg-elevated)",
                             border: "1px solid var(--border-muted)",
@@ -575,6 +1000,24 @@ export const SchoolOnboarding: React.FC = () => {
                       </Form.Item>
                     </Col>
                   </Row>
+                  <Row gutter={16} style={{ marginTop: 8 }}>
+                    <Col xs={24} md={6}>
+                      <Form.Item
+                        name="is_admin"
+                        valuePropName="checked"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Administrator Role
+                          </span>
+                        }
+                      >
+                        <Switch
+                          checkedChildren="ADMIN"
+                          unCheckedChildren="STAFF"
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
                 </>
               )}
 
@@ -595,7 +1038,9 @@ export const SchoolOnboarding: React.FC = () => {
                       <Form.Item
                         name="department"
                         label={
-                          <span style={{ color: "var(--text-secondary)" }}>Department</span>
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Department
+                          </span>
                         }
                         rules={[
                           {
@@ -841,7 +1286,9 @@ export const SchoolOnboarding: React.FC = () => {
                                       style={{
                                         background: "var(--bg-elevated)",
                                         border: "1px solid var(--border-muted)",
-                                        color: fileUrl ? "#45a29e" : "var(--text-secondary)",
+                                        color: fileUrl
+                                          ? "#45a29e"
+                                          : "var(--text-secondary)",
                                         borderRadius: 8,
                                         textAlign: "left",
                                       }}
@@ -903,7 +1350,9 @@ export const SchoolOnboarding: React.FC = () => {
                   <Form.Item
                     name="status"
                     label={
-                      <span style={{ color: "var(--text-secondary)" }}>Initial Status</span>
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        Initial Status
+                      </span>
                     }
                     rules={[{ required: true }]}
                   >
