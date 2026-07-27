@@ -5,6 +5,9 @@ import schoolReducer from "./schoolSlice";
 import roasterReducer from "./roaster/roasterSlice";
 import teachersReducer from "./teachers/teachersSlice";
 import studentsReducer from "./students/studentsSlice";
+import academicReducer from "./academic/academicSlice";
+import examReducer from "./exam/examSlice";
+import examResultReducer from "./exam-result/examResultSlice";
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +15,9 @@ export const store = configureStore({
     roaster: roasterReducer,
     teachers: teachersReducer,
     students: studentsReducer,
+    academic: academicReducer,
+    exam: examReducer,
+    examResults: examResultReducer,
   },
 });
 

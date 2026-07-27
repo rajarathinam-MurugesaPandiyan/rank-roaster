@@ -29,6 +29,7 @@ import {
   fetchGradesBySchool,
 } from "../../redux/roaster/roasterSlice";
 import { createStudent } from "../../redux/students/studentsSlice";
+import { fetchAcademicYearsBySchool } from "../../redux/academic/academicSlice";
 
 const { Title, Paragraph } = Typography;
 const { Option } = Select;
@@ -36,6 +37,7 @@ const { Option } = Select;
 export const SchoolOnboarding: React.FC = () => {
   const dispatch = useAppDispatch();
   const { loading, grades = [] } = useAppSelector((state) => state.roaster);
+  const { academicYears = [] } = useAppSelector((state) => state.academic);
   const { schoolId } = useParams<{ schoolId: string }>();
   const [form] = Form.useForm();
   const [selectedRole, setSelectedRole] = useState("Student");
@@ -45,8 +47,19 @@ export const SchoolOnboarding: React.FC = () => {
   useEffect(() => {
     if (schoolId) {
       dispatch(fetchGradesBySchool(schoolId));
+      dispatch(fetchAcademicYearsBySchool(schoolId));
     }
   }, [schoolId, dispatch]);
+
+  const activeYear = academicYears.find((ay) => ay.isActive);
+
+  useEffect(() => {
+    if (activeYear) {
+      form.setFieldsValue({
+        academicYearId: activeYear.id,
+      });
+    }
+  }, [activeYear, form]);
 
   const onFinish = async (values: any) => {
     setSubmitting(true);
@@ -127,6 +140,8 @@ export const SchoolOnboarding: React.FC = () => {
           status: "Active",
           joinedAt: new Date().toISOString(),
           password: "TempPass@" + (values.phone || "1234567890"),
+          academicYearId: values.academicYearId,
+          section: values.section,
         };
 
         const resultAction = await dispatch(createStudent(studentPayload));
@@ -612,6 +627,54 @@ export const SchoolOnboarding: React.FC = () => {
                       >
                         <Input
                           placeholder="e.g. O+"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={6}>
+                      <Form.Item
+                        name="academicYearId"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Academic Year
+                          </span>
+                        }
+                        rules={[
+                          { required: true, message: "Please select academic year!" },
+                        ]}
+                      >
+                        <Select
+                          style={{ width: "100%" }}
+                          dropdownStyle={{ background: "var(--bg-elevated)" }}
+                          placeholder="Select Academic Year"
+                        >
+                          {academicYears.map((ay: any) => (
+                            <Option key={ay.id} value={ay.id}>
+                              {ay.name} ({ay.academicYear})
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={6}>
+                      <Form.Item
+                        name="section"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Section
+                          </span>
+                        }
+                        rules={[
+                          { required: true, message: "Please input Section!" },
+                        ]}
+                      >
+                        <Input
+                          placeholder="e.g. A"
                           style={{
                             background: "var(--bg-elevated)",
                             border: "1px solid var(--border-muted)",

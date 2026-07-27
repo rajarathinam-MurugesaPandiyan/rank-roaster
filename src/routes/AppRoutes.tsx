@@ -9,6 +9,9 @@ import { TeachersList } from "../pages/Teachers/TeachersList";
 import { SchoolGrades } from "../pages/Grades/Grades";
 import { GradesPage } from "../pages/Grades/GradesPage";
 import { StudentsList } from "../pages/Students/StudentsList";
+import { AcademicExams } from "../pages/Academic/Exams";
+import { ExamResults } from "../pages/Academic/ExamResults";
+import { SchoolFees } from "../pages/Fees/Fees";
 
 export const AppRoutes = () => {
   return (
@@ -26,7 +29,16 @@ export const AppRoutes = () => {
             <Route path="classes" element={<SchoolClasses />} />
             <Route path="teachers" element={<TeachersList />} />
             <Route path="students" element={<StudentsList />} />
+            <Route path="fees" element={<SchoolFees />} />
             <Route path="academic" element={<SchoolGrades />} />
+            <Route
+              path="academic/:academicYearId/exams"
+              element={<AcademicExams />}
+            />
+            <Route
+              path="academic/:academicYearId/exams/:examId/results"
+              element={<ExamResults />}
+            />
             <Route path="grades" element={<GradesPage />} />
           </Route>
         </Route>

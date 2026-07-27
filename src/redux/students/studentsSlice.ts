@@ -5,7 +5,10 @@ import {
   type StudentItem,
 } from "../../repository/student/studentThunks";
 
-export { createStudent, fetchStudents } from "../../repository/student/studentThunks";
+export {
+  createStudent,
+  fetchStudents,
+} from "../../repository/student/studentThunks";
 export type { StudentItem };
 
 export interface StudentsState {
@@ -14,6 +17,7 @@ export interface StudentsState {
   page: number;
   limit: number;
   pages: number;
+  hasMore: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -24,6 +28,7 @@ const initialState: StudentsState = {
   page: 1,
   limit: 10,
   pages: 0,
+  hasMore: false,
   loading: false,
   error: null,
 };
@@ -58,11 +63,13 @@ const studentsSlice = createSlice({
       })
       .addCase(fetchStudents.fulfilled, (state, action) => {
         state.loading = false;
-        state.students = action.payload.students || [];
-        state.total = action.payload.total || 0;
-        state.page = action.payload.page || 1;
-        state.limit = action.payload.limit || 10;
-        state.pages = action.payload.pages || 0;
+        const data = action.payload;
+        state.students = data.students || [];
+        state.total = data.total || 0;
+        state.page = data.page || 1;
+        state.limit = data.limit || 10;
+        state.pages = data.pages || 0;
+        state.hasMore = state.page < state.pages;
       })
       .addCase(fetchStudents.rejected, (state, action) => {
         state.loading = false;

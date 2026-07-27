@@ -18,6 +18,7 @@ export const getTabsForRole = (role?: string, isAdmin?: boolean) => {
       { key: "onboarding", label: "Onboarding", icon: "onboarding" },
       { key: "teachers", label: "Teachers", icon: "teachers" },
       { key: "students", label: "Students", icon: "students" },
+      { key: "fees", label: "Fees", icon: "fees" },
       { key: "academic", label: "Academic", icon: "academic" },
       { key: "events", label: "Events", icon: "events" },
       { key: "grades", label: "Grades", icon: "grades" },
@@ -46,6 +47,9 @@ export const getTabsForRole = (role?: string, isAdmin?: boolean) => {
   return [
     { key: "dashboard", label: "Dashboard", icon: "dashboard" },
     { key: "onboarding", label: "Onboarding", icon: "onboarding" },
+    { key: "teachers", label: "Teachers", icon: "teachers" },
+    { key: "students", label: "Students", icon: "students" },
+    { key: "fees", label: "Fees", icon: "fees" },
     { key: "classes", label: "Classes", icon: "classes" },
   ];
 };

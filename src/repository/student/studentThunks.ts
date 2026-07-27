@@ -29,6 +29,19 @@ export interface StudentItem {
   photoUrl?: string;
   status: string;
   joinedAt?: string;
+  academicYearId?: string;
+  section?: string;
+  enrollment?: {
+    id: string;
+    student_id: string;
+    school_id: string;
+    academic_year_id: string;
+    grade_id: string;
+    roll_no?: number;
+    section?: string;
+    status?: string;
+    joined_at?: string;
+  };
 }
 
 export interface CreateStudentPayload {
@@ -58,6 +71,8 @@ export interface CreateStudentPayload {
   status: string; // Active, Inactive, Graduated, Transferred
   joinedAt?: string;
   password?: string;
+  academicYearId?: string;
+  section?: string;
 }
 
 export interface FetchStudentsParams {
