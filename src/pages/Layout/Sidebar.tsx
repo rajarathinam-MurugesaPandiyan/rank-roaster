@@ -4,12 +4,13 @@ import {
   DashboardOutlined,
   UserAddOutlined,
   BookOutlined,
-  FireOutlined,
   UserOutlined,
   TeamOutlined,
   SolutionOutlined,
   CalendarOutlined,
   ReadOutlined,
+  RocketOutlined,
+  DollarOutlined,
 } from "@ant-design/icons";
 
 const { Sider } = Layout;
@@ -21,6 +22,7 @@ const iconMap: { [key: string]: React.ReactNode } = {
   classes: <BookOutlined />,
   teachers: <UserOutlined />,
   students: <TeamOutlined />,
+  fees: <DollarOutlined />,
   grades: <SolutionOutlined />,
   academic: <ReadOutlined />,
   events: <CalendarOutlined />,
@@ -80,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               boxShadow: "0 0 10px rgba(69, 162, 158, 0.4)",
             }}
           >
-            <FireOutlined style={{ fontSize: 16, color: "#fff" }} />
+            <RocketOutlined style={{ fontSize: 16, color: "#fff" }} />
           </div>
           {!collapsed && (
             <Title
@@ -107,8 +109,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         style={{ background: "transparent", marginTop: 16, border: "none" }}
         items={tabs.map((tab) => {
           const resolvedIcon = tab.icon
-            ? (typeof tab.icon === "string" ? iconMap[tab.icon] : tab.icon)
-            : (iconMap[tab.key] || <BookOutlined />);
+            ? typeof tab.icon === "string"
+              ? iconMap[tab.icon]
+              : tab.icon
+            : iconMap[tab.key] || <BookOutlined />;
           return {
             key: tab.key,
             icon: resolvedIcon,

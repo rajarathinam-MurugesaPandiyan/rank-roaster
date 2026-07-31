@@ -1,435 +1,455 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Row,
   Col,
-  Table,
   Typography,
   Space,
+  Button,
+  Modal,
+  Form,
   Input,
-  Select,
-  Progress,
-  Tag,
+  Switch,
+  message,
+  Spin,
 } from "antd";
 import {
-  SearchOutlined,
-  TrophyOutlined,
-  BarChartOutlined,
-  LineChartOutlined,
+  PlusOutlined,
+  CalendarOutlined,
   CheckCircleOutlined,
+  ClockCircleOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
-import { GRADES } from "../../redux/schoolSlice";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "../../redux/store";
+import {
+  fetchAcademicYearsBySchool,
+  createAcademicYear,
+  updateAcademicYear,
+  type AcademicYearItem,
+} from "../../redux/academic/academicSlice";
 
-const { Title, Paragraph } = Typography;
-const { Option } = Select;
-
-interface GradeItem {
-  id: string;
-  studentName: string;
-  gradeLevel: string;
-  subject: string;
-  score: number;
-  letter: string;
-  status: "Excellent" | "Good" | "Needs Improvement" | "Critical";
-}
-
-// Initial mock grades data representing typical school database records
-const INITIAL_GRADES: GradeItem[] = [
-  {
-    id: "1",
-    studentName: "Sophia Martinez",
-    gradeLevel: "Grade 10",
-    subject: "Algebra II",
-    score: 94,
-    letter: "A",
-    status: "Excellent",
-  },
-  {
-    id: "2",
-    studentName: "Marcus Vance",
-    gradeLevel: "Grade 11",
-    subject: "AP Chemistry",
-    score: 88,
-    letter: "B+",
-    status: "Good",
-  },
-  {
-    id: "3",
-    studentName: "Ethan Hunt",
-    gradeLevel: "Grade 9",
-    subject: "World History",
-    score: 76,
-    letter: "C+",
-    status: "Needs Improvement",
-  },
-  {
-    id: "4",
-    studentName: "Emily Watson",
-    gradeLevel: "Grade 10",
-    subject: "Algebra II",
-    score: 98,
-    letter: "A+",
-    status: "Excellent",
-  },
-  {
-    id: "5",
-    studentName: "Lucas Hood",
-    gradeLevel: "Grade 12",
-    subject: "Advanced Literature",
-    score: 91,
-    letter: "A-",
-    status: "Excellent",
-  },
-  {
-    id: "6",
-    studentName: "Carrie Mathison",
-    gradeLevel: "Grade 11",
-    subject: "AP Chemistry",
-    score: 55,
-    letter: "D",
-    status: "Critical",
-  },
-  {
-    id: "7",
-    studentName: "Danny Rand",
-    gradeLevel: "Grade 9",
-    subject: "World History",
-    score: 84,
-    letter: "B",
-    status: "Good",
-  },
-  {
-    id: "8",
-    studentName: "Jessica Jones",
-    gradeLevel: "Grade 12",
-    subject: "Advanced Literature",
-    score: 89,
-    letter: "B+",
-    status: "Good",
-  },
-];
+const { Title, Paragraph, Text } = Typography;
 
 export const SchoolGrades: React.FC = () => {
-  const [grades] = useState<GradeItem[]>(INITIAL_GRADES);
-  const [searchText, setSearchText] = useState("");
-  const [selectedGrade, setSelectedGrade] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("");
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { schoolId } = useParams<{ schoolId: string }>();
+  const [form] = Form.useForm();
 
-  const filteredGrades = grades.filter((g) => {
-    const matchesSearch = g.studentName
-      .toLowerCase()
-      .includes(searchText.toLowerCase());
-    const matchesGrade = selectedGrade ? g.gradeLevel === selectedGrade : true;
-    const matchesSubject = selectedSubject
-      ? g.subject === selectedSubject
-      : true;
-    return matchesSearch && matchesGrade && matchesSubject;
-  });
-
-  const averageScore = Math.round(
-    filteredGrades.reduce((sum, curr) => sum + curr.score, 0) /
-      (filteredGrades.length || 1),
+  const { academicYears, loading, submitLoading, error } = useAppSelector(
+    (state) => state.academic
+  );
+  const { currentUser, currentSchool } = useAppSelector(
+    (state) => state.roaster
   );
 
-  const passingCount = filteredGrades.filter((g) => g.score >= 60).length;
-  const passingRate = Math.round(
-    (passingCount / (filteredGrades.length || 1)) * 100,
-  );
+  const finalSchoolId =
+    schoolId || currentUser?.school_id || currentSchool?.school_id || currentSchool?.id || "";
 
-  const getStatusTagColor = (status: string) => {
-    switch (status) {
-      case "Excellent":
-        return "#45a29e"; // Teal
-      case "Good":
-        return "#2ea043"; // Green
-      case "Needs Improvement":
-        return "#ffa552"; // Amber
-      case "Critical":
-        return "#f85149"; // Red
-      default:
-        return "#8b949e";
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingYear, setEditingYear] = useState<AcademicYearItem | null>(null);
+
+  // Fetch academic years on mount
+  useEffect(() => {
+    if (finalSchoolId) {
+      dispatch(fetchAcademicYearsBySchool(finalSchoolId));
+    }
+  }, [finalSchoolId, dispatch]);
+
+  // Handle display error notifications
+  useEffect(() => {
+    if (error) {
+      message.error(error);
+    }
+  }, [error]);
+
+  const handleOpenModal = (year: AcademicYearItem | null = null) => {
+    setEditingYear(year);
+    if (year) {
+      form.setFieldsValue({
+        name: year.name,
+        academicYear: year.academicYear,
+        startDate: year.startDate ? year.startDate.substring(0, 10) : "",
+        endDate: year.endDate ? year.endDate.substring(0, 10) : "",
+        isActive: year.isActive,
+      });
+    } else {
+      form.resetFields();
+      form.setFieldsValue({
+        isActive: false,
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingYear(null);
+    form.resetFields();
+  };
+
+  const onFinish = async (values: any) => {
+    if (!finalSchoolId) {
+      message.error("School context is missing");
+      return;
+    }
+
+    try {
+      const startIso = new Date(values.startDate).toISOString();
+      const endIso = new Date(values.endDate).toISOString();
+
+      if (editingYear) {
+        // Update operation
+        const resultAction = await dispatch(
+          updateAcademicYear({
+            id: editingYear.id,
+            name: values.name,
+            academicYear: values.academicYear,
+            startDate: startIso,
+            endDate: endIso,
+            isActive: values.isActive,
+          })
+        );
+        if (updateAcademicYear.fulfilled.match(resultAction)) {
+          message.success(`Successfully updated Academic Year: ${values.name}`);
+          handleCloseModal();
+        }
+      } else {
+        // Create operation
+        const resultAction = await dispatch(
+          createAcademicYear({
+            schoolId: finalSchoolId,
+            name: values.name,
+            academicYear: values.academicYear,
+            startDate: startIso,
+            endDate: endIso,
+            isActive: values.isActive,
+          })
+        );
+        if (createAcademicYear.fulfilled.match(resultAction)) {
+          message.success(`Successfully created Academic Year: ${values.name}`);
+          handleCloseModal();
+        }
+      }
+    } catch (err: any) {
+      message.error(err.message || "An error occurred");
     }
   };
 
-  const columns = [
-    {
-      title: "Student Name",
-      dataIndex: "studentName",
-      key: "studentName",
-      render: (text: string) => (
-        <span style={{ fontWeight: 600, color: "#f0f6fc" }}>{text}</span>
-      ),
-    },
-    {
-      title: "Grade Level",
-      dataIndex: "gradeLevel",
-      key: "gradeLevel",
-      render: (text: string) => (
-        <span style={{ color: "#8b949e" }}>{text}</span>
-      ),
-    },
-    {
-      title: "Subject",
-      dataIndex: "subject",
-      key: "subject",
-      render: (text: string) => (
-        <span style={{ color: "#8b949e" }}>{text}</span>
-      ),
-    },
-    {
-      title: "Academic Score",
-      dataIndex: "score",
-      key: "score",
-      render: (score: number) => (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            minWidth: 150,
-          }}
-        >
-          <Progress
-            percent={score}
-            size="small"
-            strokeColor={
-              score >= 85 ? "#45a29e" : score >= 60 ? "#ffa552" : "#f85149"
-            }
-            trailColor="var(--bg-elevated)"
-            showInfo={false}
-          />
-          <span style={{ fontWeight: 600, color: "#f0f6fc" }}>{score}%</span>
-        </div>
-      ),
-    },
-    {
-      title: "Grade",
-      dataIndex: "letter",
-      key: "letter",
-      render: (letter: string) => (
-        <span
-          style={{
-            fontWeight: 700,
-            color: letter.startsWith("A") ? "#45a29e" : "#ffa552",
-            fontSize: 15,
-          }}
-        >
-          {letter}
-        </span>
-      ),
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      render: (status: string) => (
-        <Tag
-          color={getStatusTagColor(status)}
-          style={{ border: "none", color: "#fff", fontWeight: 500 }}
-        >
-          {status}
-        </Tag>
-      ),
-    },
-  ];
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "—";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <Title
-          level={2}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          gap: 16,
+          marginBottom: 24,
+        }}
+      >
+        <div>
+          <Title
+            level={2}
+            style={{
+              margin: 0,
+              fontFamily: "var(--font-display)",
+              color: "var(--text-primary)",
+              fontWeight: 700,
+            }}
+          >
+            Academic Calendar Years
+          </Title>
+          <Paragraph style={{ color: "var(--text-secondary)", marginTop: 4 }}>
+            Manage school academic calendar terms, configuration schedules, and active academic years.
+          </Paragraph>
+        </div>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => handleOpenModal(null)}
           style={{
-            margin: 0,
+            background: "#45a29e",
+            borderColor: "#45a29e",
+            color: "#ffffff",
+            fontWeight: 600,
             fontFamily: "var(--font-display)",
-            color: "var(--text-primary)",
-            fontWeight: 700,
+            borderRadius: 8,
+            height: 40,
           }}
         >
-          Academic Grades
-        </Title>
-        <Paragraph style={{ color: "var(--text-secondary)", marginTop: 4 }}>
-          Browse student performance records, review GPA summaries, and analyze
-          grade classifications by subject.
-        </Paragraph>
+          Create Academic Year
+        </Button>
       </div>
 
-      {/* Analytics KPI Metrics Cards */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} md={6}>
-          <Card style={{ background: "var(--bg-container)", border: "1px solid var(--border-muted)" }}>
-            <Space direction="vertical" size={4}>
-              <span
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "80px 0" }}>
+          <Spin size="large" />
+        </div>
+      ) : academicYears.length === 0 ? (
+        <Card
+          style={{
+            textAlign: "center",
+            padding: "48px 24px",
+            background: "var(--bg-container)",
+            border: "1px solid var(--border-muted)",
+            borderRadius: 12,
+          }}
+        >
+          <CalendarOutlined style={{ fontSize: 48, color: "var(--text-secondary)", marginBottom: 16 }} />
+          <Title level={4} style={{ margin: 0, color: "var(--text-primary)" }}>
+            No Academic Years Configured
+          </Title>
+          <Paragraph style={{ color: "var(--text-secondary)", marginTop: 8, marginBottom: 24 }}>
+            You haven't setup any academic calendar terms yet. Click the button to configure the first academic term.
+          </Paragraph>
+          <Button
+            type="primary"
+            onClick={() => handleOpenModal(null)}
+            style={{ background: "#45a29e", borderColor: "#45a29e", borderRadius: 6 }}
+          >
+            Get Started
+          </Button>
+        </Card>
+      ) : (
+        <Row gutter={[16, 16]}>
+          {academicYears.map((ay) => (
+            <Col xs={24} sm={12} md={8} key={ay.id}>
+              <Card
+                hoverable
+                onClick={() => navigate(`/${finalSchoolId}/academic/${ay.id}/exams`)}
                 style={{
-                  color: "var(--text-secondary)",
-                  fontSize: 12,
-                  textTransform: "uppercase",
-                  fontWeight: 600,
+                  background: "var(--bg-container)",
+                  border: "1px solid var(--border-muted)",
+                  borderRadius: 12,
+                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                 }}
+                bodyStyle={{ padding: 24 }}
               >
-                Class Avg Score
-              </span>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <Title
-                  level={3}
-                  style={{ margin: 0, color: "#45a29e", fontWeight: 700 }}
-                >
-                  {averageScore}%
-                </Title>
-                <BarChartOutlined style={{ color: "#45a29e", fontSize: 18 }} />
-              </div>
-            </Space>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card style={{ background: "var(--bg-container)", border: "1px solid var(--border-muted)" }}>
-            <Space direction="vertical" size={4}>
-              <span
-                style={{
-                  color: "var(--text-secondary)",
-                  fontSize: 12,
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                }}
-              >
-                Passing Rate
-              </span>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <Title
-                  level={3}
-                  style={{ margin: 0, color: "#2ea043", fontWeight: 700 }}
-                >
-                  {passingRate}%
-                </Title>
-                <CheckCircleOutlined
-                  style={{ color: "#2ea043", fontSize: 18 }}
-                />
-              </div>
-            </Space>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card style={{ background: "var(--bg-container)", border: "1px solid var(--border-muted)" }}>
-            <Space direction="vertical" size={4}>
-              <span
-                style={{
-                  color: "var(--text-secondary)",
-                  fontSize: 12,
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                }}
-              >
-                Outstanding Performance
-              </span>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <Title
-                  level={3}
-                  style={{ margin: 0, color: "#ffa552", fontWeight: 700 }}
-                >
-                  {
-                    filteredGrades.filter((g) => g.status === "Excellent")
-                      .length
-                  }{" "}
-                  Students
-                </Title>
-                <TrophyOutlined style={{ color: "#ffa552", fontSize: 18 }} />
-              </div>
-            </Space>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card style={{ background: "var(--bg-container)", border: "1px solid var(--border-muted)" }}>
-            <Space direction="vertical" size={4}>
-              <span
-                style={{
-                  color: "var(--text-secondary)",
-                  fontSize: 12,
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                }}
-              >
-                Total Evaluated
-              </span>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <Title
-                  level={3}
-                  style={{ margin: 0, color: "var(--text-primary)", fontWeight: 700 }}
-                >
-                  {filteredGrades.length} Records
-                </Title>
-                <LineChartOutlined style={{ color: "var(--text-secondary)", fontSize: 18 }} />
-              </div>
-            </Space>
-          </Card>
-        </Col>
-      </Row>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+                  <div style={{ flex: 1, marginRight: 8 }}>
+                    <Title level={4} style={{ margin: 0, color: "var(--text-primary)", fontWeight: 700 }}>
+                      {ay.name}
+                    </Title>
+                    <Text style={{ color: "#ffa552", fontWeight: 600, fontSize: 13 }}>
+                      Year Range: {ay.academicYear}
+                    </Text>
+                  </div>
+                  <Space size={8} onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      type="text"
+                      icon={<EditOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenModal(ay);
+                      }}
+                      style={{
+                        color: "var(--text-secondary)",
+                        padding: 0,
+                        width: 32,
+                        height: 32,
+                        borderRadius: 6,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    />
+                    <div
+                      style={{
+                        background: ay.isActive ? "rgba(69, 162, 158, 0.12)" : "rgba(255, 255, 255, 0.05)",
+                        border: ay.isActive ? "1px solid rgba(69, 162, 158, 0.3)" : "1px solid rgba(255, 255, 255, 0.15)",
+                        color: ay.isActive ? "#45a29e" : "var(--text-secondary)",
+                        borderRadius: 6,
+                        padding: "4px 8px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {ay.isActive ? "Active" : "Inactive"}
+                    </div>
+                  </Space>
+                </div>
 
-      {/* Filter Row and Main Grades Grid */}
-      <Card
+                <div
+                  style={{
+                    background: "rgba(255, 255, 255, 0.02)",
+                    border: "1px solid var(--border-muted)",
+                    borderRadius: 8,
+                    padding: 12,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-secondary)" }}>
+                    <CheckCircleOutlined style={{ color: "#45a29e" }} />
+                    <span>Start: {formatDate(ay.startDate)}</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-secondary)" }}>
+                    <ClockCircleOutlined style={{ color: "#ffa552" }} />
+                    <span>End: {formatDate(ay.endDate)}</span>
+                  </div>
+                </div>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      )}
+
+      <Modal
         title={
-          <Space>
-            <TrophyOutlined style={{ color: "#45a29e" }} />
-            <span style={{ color: "var(--text-primary)" }}>Academic Performance Table</span>
-          </Space>
+          <span
+            style={{
+              color: "var(--text-primary)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 700,
+              fontSize: 16,
+            }}
+          >
+            {editingYear ? "Edit Academic Year Configuration" : "Configure New Academic Year"}
+          </span>
         }
-        style={{ background: "var(--bg-container)", border: "1px solid var(--border-muted)" }}
+        open={isModalOpen}
+        onCancel={handleCloseModal}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={handleCloseModal}
+            style={{
+              background: "transparent",
+              borderColor: "var(--border-muted)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            Cancel
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            onClick={() => form.submit()}
+            loading={submitLoading}
+            style={{
+              background: "#45a29e",
+              borderColor: "#45a29e",
+              fontWeight: 600,
+              fontFamily: "var(--font-display)",
+              color: "#ffffff",
+            }}
+          >
+            {editingYear ? "Save Changes" : "Create Academic Year"}
+          </Button>,
+        ]}
+        style={{ background: "transparent" }}
+        modalRender={(modal) => (
+          <div
+            style={{
+              background: "var(--bg-container)",
+              border: "1px solid var(--border-muted)",
+              borderRadius: 12,
+              overflow: "hidden",
+            }}
+          >
+            {modal}
+          </div>
+        )}
       >
-        <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-          <Col xs={24} sm={12} md={8}>
+        <Form
+          form={form}
+          name="academic_year_form"
+          layout="vertical"
+          onFinish={onFinish}
+          requiredMark={false}
+          style={{ marginTop: 20 }}
+        >
+          <Form.Item
+            name="name"
+            label={<span style={{ color: "var(--text-secondary)" }}>Term Name</span>}
+            rules={[{ required: true, message: "Please input the academic year term name!" }]}
+          >
             <Input
-              placeholder="Search by student name..."
-              allowClear
-              size="large"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              prefix={<SearchOutlined style={{ color: "var(--text-secondary)" }} />}
+              placeholder="e.g. Annual Academic Year 2025-26"
               style={{
-                background: "var(--bg-container)",
+                background: "var(--bg-elevated)",
                 border: "1px solid var(--border-muted)",
                 color: "var(--text-primary)",
+                borderRadius: 8,
               }}
             />
-          </Col>
-          <Col xs={24} sm={12} md={8}>
-            <Select
-              placeholder="Filter by Grade level"
-              allowClear
-              size="large"
-              style={{ width: "100%" }}
-              dropdownStyle={{ background: "var(--bg-elevated)" }}
-              onChange={(value) => setSelectedGrade(value)}
-            >
-              {GRADES.map((grade) => (
-                <Option key={grade} value={grade}>
-                  {grade}
-                </Option>
-              ))}
-            </Select>
-          </Col>
-          <Col xs={24} sm={12} md={8}>
-            <Select
-              placeholder="Filter by Subject"
-              allowClear
-              size="large"
-              style={{ width: "100%" }}
-              dropdownStyle={{ background: "var(--bg-elevated)" }}
-              onChange={(value) => setSelectedSubject(value)}
-            >
-              <Option value="Algebra II">Algebra II</Option>
-              <Option value="AP Chemistry">AP Chemistry</Option>
-              <Option value="World History">World History</Option>
-              <Option value="Advanced Literature">Advanced Literature</Option>
-            </Select>
-          </Col>
-        </Row>
+          </Form.Item>
 
-        <Table
-          dataSource={filteredGrades.map((g) => ({ ...g, key: g.id }))}
-          columns={columns}
-          scroll={{ x: true }}
-          style={{ background: "transparent" }}
-          pagination={{ pageSize: 5 }}
-        />
-      </Card>
+          <Form.Item
+            name="academicYear"
+            label={<span style={{ color: "var(--text-secondary)" }}>Academic Year Range</span>}
+            rules={[{ required: true, message: "Please input the academic year range!" }]}
+          >
+            <Input
+              placeholder="e.g. 2025-2026"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--border-muted)",
+                color: "var(--text-primary)",
+                borderRadius: 8,
+              }}
+            />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="startDate"
+                label={<span style={{ color: "var(--text-secondary)" }}>Start Date</span>}
+                rules={[{ required: true, message: "Please select start date!" }]}
+              >
+                <Input
+                  type="date"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--border-muted)",
+                    color: "var(--text-primary)",
+                    borderRadius: 8,
+                  }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="endDate"
+                label={<span style={{ color: "var(--text-secondary)" }}>End Date</span>}
+                rules={[{ required: true, message: "Please select end date!" }]}
+              >
+                <Input
+                  type="date"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--border-muted)",
+                    color: "var(--text-primary)",
+                    borderRadius: 8,
+                  }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            name="isActive"
+            valuePropName="checked"
+            label={<span style={{ color: "var(--text-secondary)" }}>Set as Active Year</span>}
+          >
+            <Switch checkedChildren="ACTIVE" unCheckedChildren="INACTIVE" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

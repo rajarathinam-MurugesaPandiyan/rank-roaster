@@ -10,15 +10,17 @@ import {
   Row,
   Col,
 } from "antd";
-import { TeamOutlined } from "@ant-design/icons";
+import { TeamOutlined, SearchOutlined } from "@ant-design/icons";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
 import { fetchStudents, clearError } from "../../redux/students/studentsSlice";
 import { fetchGradesBySchool } from "../../redux/roaster/roasterSlice";
+import { fetchAcademicYearsBySchool } from "../../redux/academic/academicSlice";
 import type { StudentItem } from "../../redux/students/studentsSlice";
 import { StatusTag } from "../../atoms/StatusTag";
 import { StudentDetailDrawer } from "./StudentDetailDrawer";
 
 const { Title, Paragraph } = Typography;
+const { Option } = Select;
 
 export const StudentsList: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -26,10 +28,12 @@ export const StudentsList: React.FC = () => {
     (state) => state.students
   );
   const { grades = [] } = useAppSelector((state) => state.roaster);
+  const { academicYears = [] } = useAppSelector((state) => state.academic);
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [search, setSearch] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [gradeId, setGradeId] = useState("");
   const [status, setStatus] = useState("");
 
@@ -50,14 +54,24 @@ export const StudentsList: React.FC = () => {
   const schoolId =
     currentUser?.school_id || currentSchool?.school_id || currentSchool?.id;
 
-  // Load grades for dropdown on mount
+  // Load grades and academic years once on mount
   useEffect(() => {
     if (schoolId) {
       dispatch(fetchGradesBySchool(schoolId));
+      dispatch(fetchAcademicYearsBySchool(schoolId));
     }
   }, [schoolId, dispatch]);
 
-  // Load students based on selected school, grade, and query filters
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchText);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchText]);
+
+  // Load students based on selected school, grade, page, limit, search, and status
   useEffect(() => {
     if (schoolId) {
       dispatch(
@@ -66,12 +80,12 @@ export const StudentsList: React.FC = () => {
           gradeId: gradeId || undefined,
           page,
           limit,
-          search,
+          search: debouncedSearch || undefined,
           status: status || undefined,
         })
       );
     }
-  }, [schoolId, gradeId, page, limit, search, status, dispatch]);
+  }, [schoolId, gradeId, page, limit, debouncedSearch, status, dispatch]);
 
   // Error handling
   useEffect(() => {
@@ -108,14 +122,30 @@ export const StudentsList: React.FC = () => {
       ),
     },
     {
-      title: "Grade",
-      dataIndex: "gradeId",
-      key: "gradeId",
-      render: (gId: string) => {
-        const gradeObj = grades.find((g: any) => g.id === gId);
+      title: "Grade & Section",
+      key: "gradeSection",
+      render: (_: any, record: StudentItem) => {
+        const targetGradeId = record.gradeId || record.enrollment?.grade_id;
+        const gradeObj = grades.find((g: any) => g.id === targetGradeId);
+        const gradeName = gradeObj ? gradeObj.name : "Unassigned";
+        const sectionVal = record.section || record.enrollment?.section;
+        const sectionInfo = sectionVal ? ` - Section ${sectionVal}` : "";
         return (
           <span style={{ color: "#45a29e", fontWeight: 500 }}>
-            {gradeObj ? gradeObj.name : "Unassigned"}
+            {gradeName}{sectionInfo}
+          </span>
+        );
+      },
+    },
+    {
+      title: "Academic Year",
+      key: "academicYearId",
+      render: (_: any, record: StudentItem) => {
+        const ayId = record.academicYearId || record.enrollment?.academic_year_id;
+        const ayObj = academicYears.find((ay: any) => ay.id === ayId);
+        return (
+          <span style={{ color: "var(--text-secondary)" }}>
+            {ayObj ? `${ayObj.name} (${ayObj.academicYear})` : "—"}
           </span>
         );
       },
@@ -187,7 +217,23 @@ export const StudentsList: React.FC = () => {
         }}
       >
         <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} md={8}>
+            <Input
+              placeholder="Search by name or admission number..."
+              allowClear
+              size="large"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              prefix={<SearchOutlined style={{ color: "var(--text-secondary)" }} />}
+              style={{
+                background: "var(--bg-container)",
+                border: "1px solid var(--border-muted)",
+                color: "var(--text-primary)",
+                borderRadius: 8,
+              }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8}>
             <Select
               placeholder="Select Grade"
               allowClear
@@ -201,44 +247,18 @@ export const StudentsList: React.FC = () => {
               dropdownStyle={{ background: "var(--bg-elevated)" }}
             >
               {grades.map((grade: any) => (
-                <Select.Option key={grade.id} value={grade.id}>
-                  <Space>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        backgroundColor: grade.color || "#45a29e",
-                      }}
-                    />
-                    <span>{grade.name}</span>
-                  </Space>
-                </Select.Option>
+                <Option key={grade.id} value={grade.id}>
+                  {grade.name}
+                </Option>
               ))}
             </Select>
           </Col>
           <Col xs={24} sm={12} md={8}>
-            <Input.Search
-              placeholder="Search by name or admission number..."
-              allowClear
-              size="large"
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              onSearch={(value) => {
-                setSearch(value);
-                setPage(1);
-              }}
-              style={{ width: "100%" }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={6}>
             <Select
               placeholder="Filter by Status"
               allowClear
               size="large"
+              value={status || undefined}
               onChange={(value) => {
                 setStatus(value || "");
                 setPage(1);
