@@ -12,7 +12,7 @@ export const TabSelector: React.FC<TabSelectorProps> = ({ role, onChange, disabl
     padding: "10px 12px",
     borderRadius: "6px",
     border: "none",
-    background: active ? "linear-gradient(135deg, #45a29e 0%, #ffa552 100%)" : "transparent",
+    background: active ? "var(--primary-brand)" : "transparent",
     color: active ? "#ffffff" : "var(--text-secondary)",
     cursor: disabled ? "not-allowed" : "pointer",
     fontWeight: 600,

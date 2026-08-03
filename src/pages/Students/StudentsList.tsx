@@ -9,8 +9,10 @@ import {
   Select,
   Row,
   Col,
+  Avatar,
 } from "antd";
-import { TeamOutlined, SearchOutlined } from "@ant-design/icons";
+import { TeamOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { AsyncAvatar } from "../../components/AsyncAvatar";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
 import { fetchStudents, clearError } from "../../redux/students/studentsSlice";
 import { fetchGradesBySchool } from "../../redux/roaster/roasterSlice";
@@ -25,7 +27,7 @@ const { Option } = Select;
 export const StudentsList: React.FC = () => {
   const dispatch = useAppDispatch();
   const { students, total, loading, error } = useAppSelector(
-    (state) => state.students
+    (state) => state.students,
   );
   const { grades = [] } = useAppSelector((state) => state.roaster);
   const { academicYears = [] } = useAppSelector((state) => state.academic);
@@ -39,7 +41,7 @@ export const StudentsList: React.FC = () => {
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(
-    null
+    null,
   );
 
   const handleRowClick = (record: StudentItem) => {
@@ -48,7 +50,7 @@ export const StudentsList: React.FC = () => {
   };
 
   const { currentUser, currentSchool } = useAppSelector(
-    (state) => state.roaster
+    (state) => state.roaster,
   );
 
   const schoolId =
@@ -82,7 +84,7 @@ export const StudentsList: React.FC = () => {
           limit,
           search: debouncedSearch || undefined,
           status: status || undefined,
-        })
+        }),
       );
     }
   }, [schoolId, gradeId, page, limit, debouncedSearch, status, dispatch]);
@@ -100,9 +102,17 @@ export const StudentsList: React.FC = () => {
       title: "Name",
       key: "fullName",
       render: (_: any, record: StudentItem) => (
-        <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-          {record.fullName || `${record.firstName} ${record.lastName}`}
-        </span>
+        <Space size={12}>
+          <AsyncAvatar
+            size={36}
+            src={record.photoUrl || (record as any).photo_url}
+            icon={<UserOutlined />}
+            style={{ backgroundColor: "var(--primary-brand)" }}
+          />
+          <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+            {record.fullName || `${record.firstName} ${record.lastName}`}
+          </span>
+        </Space>
       ),
     },
     {
@@ -132,7 +142,8 @@ export const StudentsList: React.FC = () => {
         const sectionInfo = sectionVal ? ` - Section ${sectionVal}` : "";
         return (
           <span style={{ color: "#45a29e", fontWeight: 500 }}>
-            {gradeName}{sectionInfo}
+            {gradeName}
+            {sectionInfo}
           </span>
         );
       },
@@ -141,7 +152,8 @@ export const StudentsList: React.FC = () => {
       title: "Academic Year",
       key: "academicYearId",
       render: (_: any, record: StudentItem) => {
-        const ayId = record.academicYearId || record.enrollment?.academic_year_id;
+        const ayId =
+          record.academicYearId || record.enrollment?.academic_year_id;
         const ayObj = academicYears.find((ay: any) => ay.id === ayId);
         return (
           <span style={{ color: "var(--text-secondary)" }}>
@@ -155,7 +167,12 @@ export const StudentsList: React.FC = () => {
       dataIndex: "gender",
       key: "gender",
       render: (text: string) => (
-        <span style={{ color: "var(--text-secondary)", textTransform: "capitalize" }}>
+        <span
+          style={{
+            color: "var(--text-secondary)",
+            textTransform: "capitalize",
+          }}
+        >
           {text || "—"}
         </span>
       ),
@@ -165,7 +182,13 @@ export const StudentsList: React.FC = () => {
       key: "parents",
       render: (_: any, record: StudentItem) => (
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ color: "var(--text-primary)", fontSize: "12px", fontWeight: 500 }}>
+          <span
+            style={{
+              color: "var(--text-primary)",
+              fontSize: "12px",
+              fontWeight: 500,
+            }}
+          >
             F: {record.fatherName || "—"}
           </span>
           <span style={{ color: "var(--text-secondary)", fontSize: "11px" }}>
@@ -224,7 +247,9 @@ export const StudentsList: React.FC = () => {
               size="large"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              prefix={<SearchOutlined style={{ color: "var(--text-secondary)" }} />}
+              prefix={
+                <SearchOutlined style={{ color: "var(--text-secondary)" }} />
+              }
               style={{
                 background: "var(--bg-container)",
                 border: "1px solid var(--border-muted)",

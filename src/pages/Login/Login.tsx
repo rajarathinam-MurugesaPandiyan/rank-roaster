@@ -1,6 +1,8 @@
 import React from "react";
 import { Card, Typography, Button } from "antd";
-import { FireOutlined, SunOutlined, MoonOutlined } from "@ant-design/icons";
+import { SunOutlined, MoonOutlined } from "@ant-design/icons";
+import LottieModule from "lottie-react";
+import brandAnimation from "../../assets/brand.json";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
 import { toggleTheme } from "../../redux/roaster/roasterSlice";
 import { useLoginFlow } from "./useLoginFlow";
@@ -8,6 +10,11 @@ import { TabSelector } from "./TabSelector";
 import { LoginForm } from "./LoginForm";
 
 const { Title, Text } = Typography;
+
+const LottieComponent: any =
+  typeof LottieModule === "function"
+    ? LottieModule
+    : (LottieModule as any)?.default;
 
 export const Login: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -34,9 +41,7 @@ export const Login: React.FC = () => {
     right: top ? "auto" : "-10%",
     width: "50vw",
     height: "50vw",
-    background: top
-      ? "radial-gradient(circle, rgba(69, 162, 158, 0.08) 0%, transparent 70%)"
-      : "radial-gradient(circle, rgba(255, 165, 82, 0.05) 0%, transparent 70%)",
+    background: "transparent",
     pointerEvents: "none",
     zIndex: 0,
   });
@@ -67,11 +72,9 @@ export const Login: React.FC = () => {
           }}
         />
       </div>
-      <div style={glowBackgroundStyle(true)} />
-      <div style={glowBackgroundStyle(false)} />
 
       <Card
-        className="glass-panel glow-card"
+        className="glass-panel"
         style={{
           width: "100%",
           maxWidth: 420,
@@ -83,18 +86,21 @@ export const Login: React.FC = () => {
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <div
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #45a29e 0%, #ffa552 100%)",
+              width: 72,
+              height: 72,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 0 20px rgba(69, 162, 158, 0.4)",
-              marginBottom: 16,
+              marginBottom: 12,
             }}
           >
-            <FireOutlined style={{ fontSize: 24, color: "#fff" }} />
+            {LottieComponent && (
+              <LottieComponent
+                animationData={brandAnimation}
+                loop={true}
+                style={{ width: 400, height: 100 }}
+              />
+            )}
           </div>
           <Title
             level={2}
@@ -106,9 +112,15 @@ export const Login: React.FC = () => {
               color: "var(--text-primary)",
             }}
           >
-            RANK <span style={{ color: "#ffa552" }}>ROASTER</span>
+            CAMPUS <span style={{ color: "var(--accent-cyan)" }}>DECK</span>
           </Title>
-          <Text style={{ color: "var(--text-secondary)", display: "block", marginTop: 4 }}>
+          <Text
+            style={{
+              color: "var(--text-secondary)",
+              display: "block",
+              marginTop: 4,
+            }}
+          >
             School Portal
           </Text>
         </div>

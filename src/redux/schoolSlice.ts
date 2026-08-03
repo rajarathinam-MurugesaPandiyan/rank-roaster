@@ -31,6 +31,9 @@ export interface Student {
   parentEmail?: string;
   parentPhone?: string;
   altPhone?: string;
+  totalFees?: number;
+  feesPaid?: number;
+  remainingFees?: number;
 }
 
 export interface ClassItem {
@@ -71,6 +74,9 @@ const INITIAL_STUDENTS: Student[] = [
     email: "sophia.m@school.edu",
     status: "Enrolled",
     date: "2026-06-05",
+    totalFees: 12000,
+    feesPaid: 12000,
+    remainingFees: 0,
   },
   {
     id: "2",
@@ -80,6 +86,9 @@ const INITIAL_STUDENTS: Student[] = [
     email: "marcus.v@school.edu",
     status: "Verified",
     date: "2026-06-06",
+    totalFees: 15000,
+    feesPaid: 10000,
+    remainingFees: 5000,
   },
   {
     id: "3",
@@ -98,6 +107,9 @@ const INITIAL_STUDENTS: Student[] = [
     email: "ethan.h@school.edu",
     status: "Pending",
     date: "2026-06-07",
+    totalFees: 10000,
+    feesPaid: 2500,
+    remainingFees: 7500,
   },
 ];
 

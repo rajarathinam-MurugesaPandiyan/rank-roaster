@@ -12,6 +12,8 @@ import { StudentsList } from "../pages/Students/StudentsList";
 import { AcademicExams } from "../pages/Academic/Exams";
 import { ExamResults } from "../pages/Academic/ExamResults";
 import { SchoolFees } from "../pages/Fees/Fees";
+import { StudentPortal } from "../pages/Student/StudentPortal";
+import { SchoolEvents } from "../pages/Events/Events";
 
 export const AppRoutes = () => {
   return (
@@ -30,6 +32,7 @@ export const AppRoutes = () => {
             <Route path="teachers" element={<TeachersList />} />
             <Route path="students" element={<StudentsList />} />
             <Route path="fees" element={<SchoolFees />} />
+            <Route path="events" element={<SchoolEvents />} />
             <Route path="academic" element={<SchoolGrades />} />
             <Route
               path="academic/:academicYearId/exams"
@@ -40,6 +43,18 @@ export const AppRoutes = () => {
               element={<ExamResults />}
             />
             <Route path="grades" element={<GradesPage />} />
+
+            {/* Student Specific Routes */}
+            <Route path="profile" element={<StudentPortal />} />
+            <Route path="documents" element={<StudentPortal />} />
+            <Route path="results" element={<StudentPortal />} />
+            <Route path="awards" element={<StudentPortal />} />
+            <Route path="permissions" element={<StudentPortal />} />
+            <Route path="attendance" element={<StudentPortal />} />
+            <Route path="payments" element={<StudentPortal />} />
+            <Route path="feedback" element={<StudentPortal />} />
+            <Route path="student/:studentId" element={<StudentPortal />} />
+            <Route path="student/:studentId/:tab" element={<StudentPortal />} />
           </Route>
         </Route>
 

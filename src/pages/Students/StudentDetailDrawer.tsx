@@ -9,7 +9,14 @@ import {
   Typography,
   Row,
   Col,
+  Card,
 } from "antd";
+import {
+  UserOutlined,
+  FileTextOutlined,
+  LinkOutlined,
+} from "@ant-design/icons";
+import { AsyncAvatar } from "../../components/AsyncAvatar";
 import type { StudentItem } from "../../redux/students/studentsSlice";
 
 const { Text } = Typography;
@@ -119,6 +126,43 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
         </Space>
       }
     >
+      {/* Student Profile Photo Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          marginBottom: 24,
+          padding: 16,
+          background: "var(--bg-elevated)",
+          borderRadius: 12,
+          border: "1px solid var(--border-muted)",
+        }}
+      >
+        <AsyncAvatar
+          size={72}
+          src={student?.photoUrl || (student as any)?.photo_url}
+          icon={<UserOutlined />}
+          style={{ backgroundColor: "var(--primary-brand)" }}
+        />
+        <div>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              display: "block",
+            }}
+          >
+            {student?.fullName || `${student?.firstName} ${student?.lastName}`}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 13 }}>
+            Roll No: {student?.rollNo || "N/A"} | Admission:{" "}
+            {student?.admissionNo || "N/A"}
+          </Text>
+        </div>
+      </div>
+
       <Form
         form={form}
         layout="vertical"
@@ -591,6 +635,70 @@ export const StudentDetailDrawer: React.FC<StudentDetailDrawerProps> = ({
             }}
           />
         </Form.Item>
+
+        {student?.documents && student.documents.length > 0 && (
+          <>
+            <div
+              style={{
+                borderTop: "1px solid var(--border-muted)",
+                margin: "24px 0",
+              }}
+            />
+            <Text
+              style={{
+                color: "#45a29e",
+                fontWeight: 600,
+                display: "block",
+                marginBottom: 16,
+              }}
+            >
+              Supporting Documents
+            </Text>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {student.documents.map((doc, idx) => (
+                <Card
+                  key={idx}
+                  size="small"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--border-muted)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Space>
+                      <FileTextOutlined
+                        style={{ color: "var(--primary-brand)" }}
+                      />
+                      <Text
+                        style={{
+                          fontWeight: 600,
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        {doc.name}
+                      </Text>
+                    </Space>
+                    <Button
+                      type="link"
+                      icon={<LinkOutlined />}
+                      href={doc.url}
+                      target="_blank"
+                      style={{ color: "var(--primary-brand)", padding: 0 }}
+                    >
+                      View
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
       </Form>
     </Drawer>
   );

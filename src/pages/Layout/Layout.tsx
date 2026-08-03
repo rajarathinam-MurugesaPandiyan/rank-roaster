@@ -5,7 +5,9 @@ import { useAppDispatch, useAppSelector } from "../../redux/store";
 import { initializeSchool } from "../../redux/schoolSlice";
 import {
   clearCurrentUser,
+  setCurrentSchool,
   toggleTheme,
+  fetchSchoolById,
 } from "../../redux/roaster/roasterSlice";
 import { schoolUnslugify } from "../../helpers/slugify";
 import { eraseCookie } from "../../helpers/cookies";
@@ -17,8 +19,9 @@ const { Content } = Layout;
 export const SchoolLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useAppDispatch();
   const { schoolId } = useParams<{ schoolId: string }>();
+  const dispatch = useAppDispatch();
+
   const [collapsed, setCollapsed] = useState(false);
 
   const activeSchool = schoolId || "default-school";
@@ -28,20 +31,50 @@ export const SchoolLayout: React.FC = () => {
 
   useEffect(() => {
     dispatch(initializeSchool(activeSchool));
-  }, [activeSchool, dispatch]);
+
+    const targetSchoolId =
+      currentUser?.school_id || currentUser?.schoolId || schoolId;
+    if (targetSchoolId && targetSchoolId !== "default-school") {
+      dispatch(fetchSchoolById(targetSchoolId));
+    }
+  }, [activeSchool, currentUser, schoolId, dispatch]);
 
   const displaySchoolName =
-    currentSchool?.name || schoolUnslugify(activeSchool);
+    currentSchool?.name ||
+    currentUser?.school_name ||
+    currentUser?.schoolName ||
+    "";
+
+  const studentId = currentUser?.id || currentUser?.studentId || "profile";
 
   const getSelectedKey = () => {
     const path = location.pathname;
     const parts = path.split("/");
     const lastSegment = parts[parts.length - 1];
+    if (currentUser?.role === "student") {
+      if (
+        lastSegment === "dashboard" ||
+        lastSegment === activeSchool ||
+        lastSegment === studentId
+      ) {
+        return "profile";
+      }
+      return lastSegment;
+    }
     return lastSegment || "dashboard";
   };
 
   const handleMenuClick = (info: { key: string }) => {
-    navigate(`/${activeSchool}/${info.key}`);
+    if (currentUser?.role === "student") {
+      const sId = currentUser.id || currentUser.studentId;
+      if (sId) {
+        navigate(`/${activeSchool}/student/${sId}/${info.key}`);
+      } else {
+        navigate(`/${activeSchool}/${info.key}`);
+      }
+    } else {
+      navigate(`/${activeSchool}/${info.key}`);
+    }
   };
 
   const handleLogout = () => {

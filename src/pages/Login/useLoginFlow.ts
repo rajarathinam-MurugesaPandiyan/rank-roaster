@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { Form, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "../../redux/store";
-import { requestOTP, loginUser } from "../../redux/roaster/roasterSlice";
+import {
+  requestOTP,
+  loginUser,
+  setStudentUser,
+  fetchStudentByEmail,
+} from "../../redux/roaster/roasterSlice";
+import { setCookie } from "../../helpers/cookies";
 
 export const useLoginFlow = () => {
   const navigate = useNavigate();
@@ -38,10 +44,14 @@ export const useLoginFlow = () => {
 
   const handleSendOTP = async () => {
     try {
-      const fields = role === "school" ? ["email"] : ["email", "dob"];
+      const fields = (role === "school" || role === "student") ? ["email"] : ["email", "dob"];
       const values = await form.validateFields(fields);
-      setLoading(true);
+      if (role === "student") {
+        await onFinish(values);
+        return;
+      }
 
+      setLoading(true);
       const resultAction = await dispatch(
         requestOTP({ role, email: values.email, dob: values.dob })
       );
@@ -49,7 +59,7 @@ export const useLoginFlow = () => {
       if (requestOTP.fulfilled.match(resultAction)) {
         message.success("Verification code sent to your email!");
         setEmailVal(values.email);
-        if (role !== "school") setDobVal(values.dob);
+        if (role === "teacher") setDobVal(values.dob);
         setOtpSent(true);
         setTimer(150); // 2:30 countdown
       } else {
@@ -58,7 +68,7 @@ export const useLoginFlow = () => {
       }
     } catch (err: any) {
       if (err.errorFields) return;
-      message.error(err.message || "An error occurred while sending OTP.");
+      message.error(err.message || "An error occurred while signing in.");
     } finally {
       setLoading(false);
     }
@@ -67,11 +77,44 @@ export const useLoginFlow = () => {
   const onFinish = async (values: any) => {
     setLoading(true);
     try {
+      if (role === "student") {
+        const email = values.email || emailVal;
+        try {
+          const res = await dispatch(fetchStudentByEmail(email)).unwrap();
+          if (res && (res.id || res.email)) {
+            const studentData = res;
+            const studentUser = {
+              id: studentData.id,
+              name:
+                studentData.fullName ||
+                (studentData.firstName
+                  ? `${studentData.firstName} ${studentData.lastName || ""}`.trim()
+                  : "Student"),
+              email: studentData.email || email,
+              role: "student",
+              school_id: studentData.schoolId || "greenwood-high",
+              ...studentData,
+            };
+            setCookie("token", "student-session-token", 1);
+            dispatch(setStudentUser(studentUser));
+            message.success("Logged in successfully as student!");
+            const schoolSlug = studentUser.school_id || "greenwood-high";
+            navigate(`/${schoolSlug}/student/${studentUser.id || "me"}/profile`);
+            return;
+          }
+        } catch (e: any) {
+          message.error(
+            e.response?.data?.error || "Student account not found for this email address."
+          );
+          return;
+        }
+      }
+
       const resultAction = await dispatch(
         loginUser({
           role,
           email: emailVal,
-          dob: role === "school" ? undefined : dobVal,
+          dob: role === "teacher" ? dobVal : undefined,
           otp: values.otp,
         })
       );
@@ -80,6 +123,7 @@ export const useLoginFlow = () => {
         message.success("Logged in successfully!");
         const data = resultAction.payload;
         const schoolSlug = data.user.school_id || data.user.company_id || "greenwood-high";
+
         if (role === "school") {
           navigate(`/${schoolSlug}/teachers`);
         } else {

@@ -10,6 +10,7 @@ import {
   Row,
   Col,
   Tag,
+  Avatar,
 } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
@@ -79,7 +80,14 @@ export const TeachersList: React.FC = () => {
       dataIndex: "name",
       key: "name",
       render: (text: string, record: any) => (
-        <Space size={8}>
+        <Space size={12}>
+          <Avatar
+            key={record.PhotoUrl || record.image_url || record.id}
+            size={36}
+            src={record.PhotoUrl || record.image_url || undefined}
+            icon={!(record.PhotoUrl || record.image_url) ? <UserOutlined /> : undefined}
+            style={{ backgroundColor: "var(--primary-brand)" }}
+          />
           <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
             {text}
           </span>

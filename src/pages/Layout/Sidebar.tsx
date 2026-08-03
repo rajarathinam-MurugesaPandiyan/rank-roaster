@@ -9,12 +9,22 @@ import {
   SolutionOutlined,
   CalendarOutlined,
   ReadOutlined,
-  RocketOutlined,
   DollarOutlined,
+  TrophyOutlined,
+  SafetyCertificateOutlined,
+  CreditCardOutlined,
+  CommentOutlined,
 } from "@ant-design/icons";
+import LottieModule from "lottie-react";
+import brandAnimation from "../../assets/brand.json";
 
 const { Sider } = Layout;
 const { Title } = Typography;
+
+const LottieComponent: any =
+  typeof LottieModule === "function"
+    ? LottieModule
+    : (LottieModule as any)?.default;
 
 const iconMap: { [key: string]: React.ReactNode } = {
   dashboard: <DashboardOutlined />,
@@ -23,9 +33,16 @@ const iconMap: { [key: string]: React.ReactNode } = {
   teachers: <UserOutlined />,
   students: <TeamOutlined />,
   fees: <DollarOutlined />,
-  grades: <SolutionOutlined />,
-  academic: <ReadOutlined />,
   events: <CalendarOutlined />,
+  academic: <ReadOutlined />,
+  grades: <SolutionOutlined />,
+  profile: <UserOutlined />,
+  results: <SolutionOutlined />,
+  awards: <TrophyOutlined />,
+  permissions: <SafetyCertificateOutlined />,
+  attendance: <CalendarOutlined />,
+  payments: <CreditCardOutlined />,
+  feedback: <CommentOutlined />,
 };
 
 interface SidebarProps {
@@ -38,10 +55,10 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
-  tabs,
+  tabs = [],
   selectedKey,
   onMenuClick,
-  theme,
+  theme = "dark",
 }) => {
   return (
     <Sider
@@ -72,17 +89,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <Space size={12}>
           <div
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #45a29e 0%, #ffa552 100%)",
+              width: 36,
+              height: 36,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 0 10px rgba(69, 162, 158, 0.4)",
             }}
           >
-            <RocketOutlined style={{ fontSize: 16, color: "#fff" }} />
+            {LottieComponent && (
+              <LottieComponent
+                animationData={brandAnimation}
+                loop={true}
+                style={{ width: 36, height: 36 }}
+              />
+            )}
           </div>
           {!collapsed && (
             <Title
@@ -95,7 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 letterSpacing: -0.5,
               }}
             >
-              RANK <span style={{ color: "#ffa552" }}>ROASTER</span>
+              CAMPUS <span style={{ color: "var(--accent-cyan)" }}>DECK</span>
             </Title>
           )}
         </Space>
@@ -107,12 +127,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         selectedKeys={[selectedKey]}
         onClick={onMenuClick}
         style={{ background: "transparent", marginTop: 16, border: "none" }}
-        items={tabs.map((tab) => {
-          const resolvedIcon = tab.icon
-            ? typeof tab.icon === "string"
-              ? iconMap[tab.icon]
-              : tab.icon
-            : iconMap[tab.key] || <BookOutlined />;
+        items={(tabs || []).map((tab) => {
+          let resolvedIcon: React.ReactNode = <BookOutlined />;
+          if (typeof tab.icon === "string" && iconMap[tab.icon]) {
+            resolvedIcon = iconMap[tab.icon];
+          } else if (React.isValidElement(tab.icon)) {
+            resolvedIcon = tab.icon;
+          } else if (iconMap[tab.key]) {
+            resolvedIcon = iconMap[tab.key];
+          }
           return {
             key: tab.key,
             icon: resolvedIcon,
@@ -123,3 +146,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </Sider>
   );
 };
+

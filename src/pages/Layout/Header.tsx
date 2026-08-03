@@ -1,13 +1,15 @@
 import React from "react";
-import { Layout, Button, Space, Typography, Dropdown, Avatar } from "antd";
+import { Layout, Button, Space, Typography, Dropdown, Avatar, Tag } from "antd";
 import {
   MenuUnfoldOutlined,
   MenuFoldOutlined,
   LogoutOutlined,
   SunOutlined,
   MoonOutlined,
+  CrownOutlined,
 } from "@ant-design/icons";
 import type { User } from "../../redux/roaster/roasterSlice";
+import { AsyncAvatar } from "../../components/AsyncAvatar";
 
 const { Header: AntHeader } = Layout;
 const { Title } = Typography;
@@ -41,6 +43,8 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const userObj = currentUser || currentSchool;
+  const isStudent = userObj?.role === "student";
+
   const userMenuItems = {
     items: [
       {
@@ -68,7 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
         height: 72,
       }}
     >
-      <Space size={16}>
+      <Space size={16} align="center">
         <Button
           type="text"
           icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
@@ -80,17 +84,37 @@ export const Header: React.FC<HeaderProps> = ({
             color: "var(--text-secondary)",
           }}
         />
-        <Title
-          level={4}
-          style={{
-            margin: 0,
-            color: "var(--text-primary)",
-            fontFamily: "var(--font-display)",
-            fontWeight: 600,
-          }}
-        >
-          {displaySchoolName}
-        </Title>
+        {displaySchoolName && (
+          <Title
+            level={4}
+            style={{
+              margin: 0,
+              color: "var(--text-primary)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 600,
+            }}
+          >
+            {displaySchoolName}
+          </Title>
+        )}
+        {isStudent && (
+          <Tag
+            color="purple"
+            icon={<CrownOutlined />}
+            style={{
+              borderRadius: 6,
+              fontWeight: 700,
+              padding: "3px 10px",
+              fontSize: 11,
+              letterSpacing: "0.5px",
+              textTransform: "uppercase",
+              border: "none",
+              boxShadow: "0 2px 6px rgba(147, 51, 234, 0.25)",
+            }}
+          >
+            Student Portal
+          </Tag>
+        )}
       </Space>
 
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -115,16 +139,16 @@ export const Header: React.FC<HeaderProps> = ({
               gap: 10,
             }}
           >
-            <Avatar
+            <AsyncAvatar
+              src={userObj?.photoUrl || userObj?.image_url}
               style={{
-                backgroundColor: "#45a29e",
+                backgroundColor: "var(--primary-brand)",
                 verticalAlign: "middle",
-                boxShadow: "0 0 10px rgba(69, 162, 158, 0.3)",
+                boxShadow: "0 0 10px rgba(79, 70, 229, 0.3)",
               }}
               size="default"
-            >
-              {getInitials(userObj?.name)}
-            </Avatar>
+              icon={getInitials(userObj?.name)}
+            />
           </div>
         </Dropdown>
       </div>

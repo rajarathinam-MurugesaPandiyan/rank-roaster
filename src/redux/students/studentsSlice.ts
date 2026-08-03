@@ -2,12 +2,14 @@ import { createSlice } from "@reduxjs/toolkit";
 import {
   createStudent,
   fetchStudents,
+  updateStudent,
   type StudentItem,
 } from "../../repository/student/studentThunks";
 
 export {
   createStudent,
   fetchStudents,
+  updateStudent,
 } from "../../repository/student/studentThunks";
 export type { StudentItem };
 
@@ -72,6 +74,25 @@ const studentsSlice = createSlice({
         state.hasMore = state.page < state.pages;
       })
       .addCase(fetchStudents.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // updateStudent
+      .addCase(updateStudent.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateStudent.fulfilled, (state, action) => {
+        state.loading = false;
+        const updated = action.payload;
+        const index = state.students.findIndex(
+          (s) => s.id === updated.id || (s.id && s.id === updated.id)
+        );
+        if (index !== -1) {
+          state.students[index] = updated;
+        }
+      })
+      .addCase(updateStudent.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

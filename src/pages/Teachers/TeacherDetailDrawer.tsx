@@ -11,7 +11,10 @@ import {
   Col,
   message,
   Switch,
+  Avatar,
+  Card,
 } from "antd";
+import { UserOutlined, FileTextOutlined, LinkOutlined } from "@ant-design/icons";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
 import {
   updateTeacher,
@@ -169,6 +172,43 @@ export const TeacherDetailDrawer: React.FC<TeacherDetailDrawerProps> = ({
         </Space>
       }
     >
+      {/* Teacher Profile Photo Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          marginBottom: 24,
+          padding: 16,
+          background: "var(--bg-elevated)",
+          borderRadius: 12,
+          border: "1px solid var(--border-muted)",
+        }}
+      >
+        <Avatar
+          key={teacher?.PhotoUrl || (teacher as any)?.image_url || "teacher-avatar"}
+          size={72}
+          src={teacher?.PhotoUrl || (teacher as any)?.image_url || undefined}
+          icon={!(teacher?.PhotoUrl || (teacher as any)?.image_url) ? <UserOutlined /> : undefined}
+          style={{ backgroundColor: "var(--primary-brand)" }}
+        />
+        <div>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              display: "block",
+            }}
+          >
+            {teacher?.name}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 13 }}>
+            {teacher?.subject || "Teacher"} | {teacher?.department || "Faculty"}
+          </Text>
+        </div>
+      </div>
+
       <Form
         form={form}
         layout="vertical"
@@ -513,6 +553,62 @@ export const TeacherDetailDrawer: React.FC<TeacherDetailDrawerProps> = ({
             </Form.Item>
           </Col>
         </Row>
+        {teacher?.documents && teacher.documents.length > 0 && (
+          <>
+            <div
+              style={{
+                borderTop: "1px solid var(--border-muted)",
+                margin: "24px 0",
+              }}
+            />
+            <Text
+              style={{
+                color: "#45a29e",
+                fontWeight: 600,
+                display: "block",
+                marginBottom: 16,
+              }}
+            >
+              Supporting Documents
+            </Text>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {teacher.documents.map((doc: any, idx: number) => (
+                <Card
+                  key={idx}
+                  size="small"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--border-muted)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Space>
+                      <FileTextOutlined style={{ color: "var(--primary-brand)" }} />
+                      <Text style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+                        {doc.name}
+                      </Text>
+                    </Space>
+                    <Button
+                      type="link"
+                      icon={<LinkOutlined />}
+                      href={doc.url}
+                      target="_blank"
+                      style={{ color: "var(--primary-brand)", padding: 0 }}
+                    >
+                      View
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
       </Form>
     </Drawer>
   );

@@ -26,8 +26,14 @@ export const getTabsForRole = (role?: string, isAdmin?: boolean) => {
   }
   if (normalizedRole === "student") {
     return [
-      { key: "dashboard", label: "Dashboard", icon: "dashboard" },
-      { key: "classes", label: "Classes", icon: "classes" },
+      { key: "profile", label: "Profile", icon: "profile" },
+      { key: "documents", label: "Documents", icon: "academic" },
+      { key: "results", label: "Results", icon: "results" },
+      { key: "awards", label: "Awards", icon: "awards" },
+      { key: "permissions", label: "Permissions", icon: "permissions" },
+      { key: "attendance", label: "Attendance", icon: "attendance" },
+      { key: "payments", label: "Payments", icon: "payments" },
+      { key: "feedback", label: "Feedback", icon: "feedback" },
     ];
   }
   if (normalizedRole === "teacher") {

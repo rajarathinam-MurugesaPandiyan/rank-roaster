@@ -24,10 +24,13 @@ import {
   ClockCircleOutlined,
   ExclamationCircleOutlined,
   CreditCardOutlined,
-  UserOutlined,
 } from "@ant-design/icons";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
-import { fetchStudents, clearError } from "../../redux/students/studentsSlice";
+import {
+  fetchStudents,
+  updateStudent,
+  clearError,
+} from "../../redux/students/studentsSlice";
 import { fetchGradesBySchool } from "../../redux/roaster/roasterSlice";
 import { fetchAcademicYearsBySchool } from "../../redux/academic/academicSlice";
 import type { StudentItem } from "../../redux/students/studentsSlice";
@@ -38,11 +41,13 @@ const { Option } = Select;
 export const SchoolFees: React.FC = () => {
   const dispatch = useAppDispatch();
   const { students, total, loading, error } = useAppSelector(
-    (state) => state.students
+    (state) => state.students,
   );
-  const { grades = [], currentUser, currentSchool } = useAppSelector(
-    (state) => state.roaster
-  );
+  const {
+    grades = [],
+    currentUser,
+    currentSchool,
+  } = useAppSelector((state) => state.roaster);
   const { academicYears = [] } = useAppSelector((state) => state.academic);
 
   const [page, setPage] = useState(1);
@@ -52,7 +57,7 @@ export const SchoolFees: React.FC = () => {
   // Payment drawer state
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(
-    null
+    null,
   );
   const [feeRecords, setFeeRecords] = useState<
     Record<string, { paid: number; status: "Paid" | "Partial" | "Pending" }>
@@ -80,7 +85,7 @@ export const SchoolFees: React.FC = () => {
           gradeId: gradeId || undefined,
           page,
           limit,
-        })
+        }),
       );
     }
   }, [schoolId, gradeId, page, limit, dispatch]);
@@ -102,35 +107,39 @@ export const SchoolFees: React.FC = () => {
 
   // Helper to resolve paid amount and status
   const getFeeDetails = (student: StudentItem) => {
-    const totalFee = getTuitionFee(student);
+    const enrollment = student.enrollment;
     const custom = feeRecords[student.id];
-    if (custom) {
-      const paid = custom.paid;
-      const due = Math.max(0, totalFee - paid);
-      let status: "Paid" | "Partial" | "Pending" = custom.status;
-      if (paid >= totalFee) status = "Paid";
-      else if (paid > 0) status = "Partial";
-      else status = "Pending";
-      return { totalFee, paid, due, status };
+
+    let totalFee = getTuitionFee(student);
+    if (enrollment && enrollment.total_fees && enrollment.total_fees > 0) {
+      totalFee = enrollment.total_fees;
     }
 
-    // Default status algorithm for demo presentation
-    const hash = student.id
-      ? student.id.charCodeAt(student.id.length - 1) % 3
-      : 0;
-    if (hash === 0) {
-      return { totalFee, paid: totalFee, due: 0, status: "Paid" as const };
-    } else if (hash === 1) {
-      const paid = Math.round(totalFee * 0.5);
-      return {
-        totalFee,
-        paid,
-        due: totalFee - paid,
-        status: "Partial" as const,
-      };
-    } else {
-      return { totalFee, paid: 0, due: totalFee, status: "Pending" as const };
+    let paid = custom ? custom.paid : (enrollment?.fees_paid ?? 0);
+    if (
+      custom === undefined &&
+      enrollment?.fees_paid === undefined &&
+      enrollment?.total_fees === undefined
+    ) {
+      // Fallback status algorithm for demo presentation
+      const hash = student.id
+        ? student.id.charCodeAt(student.id.length - 1) % 3
+        : 0;
+      if (hash === 0) {
+        paid = totalFee;
+      } else if (hash === 1) {
+        paid = Math.round(totalFee * 0.5);
+      } else {
+        paid = 0;
+      }
     }
+
+    const due = Math.max(0, totalFee - paid);
+    let status: "Paid" | "Partial" | "Pending" = "Pending";
+    if (paid >= totalFee && totalFee > 0) status = "Paid";
+    else if (paid > 0) status = "Partial";
+
+    return { totalFee, paid, due, status };
   };
 
   const handleOpenPaymentDrawer = (student: StudentItem) => {
@@ -147,30 +156,87 @@ export const SchoolFees: React.FC = () => {
   const handleRecordPayment = async (values: any) => {
     if (!selectedStudent) return;
     setSubmittingPayment(true);
-    const current = getFeeDetails(selectedStudent);
-    const newPaid = current.paid + Number(values.amount || 0);
-    const totalFee = current.totalFee;
-    let newStatus: "Paid" | "Partial" | "Pending" = "Pending";
 
-    if (newPaid >= totalFee) newStatus = "Paid";
-    else if (newPaid > 0) newStatus = "Partial";
+    try {
+      const current = getFeeDetails(selectedStudent);
+      const addedAmount = Number(values.amount || 0);
+      const newPaid = current.paid + addedAmount;
+      const totalFee = current.totalFee;
+      const remaining = Math.max(0, totalFee - newPaid);
 
-    setFeeRecords((prev) => ({
-      ...prev,
-      [selectedStudent.id]: {
-        paid: newPaid,
-        status: newStatus,
-      },
-    }));
+      let newStatus: "Paid" | "Partial" | "Pending" = "Pending";
+      if (newPaid >= totalFee && totalFee > 0) newStatus = "Paid";
+      else if (newPaid > 0) newStatus = "Partial";
 
-    message.success(
-      `Recorded payment of $${values.amount} for ${
-        selectedStudent.fullName || selectedStudent.firstName
-      }`
-    );
-    setSubmittingPayment(false);
-    setDrawerVisible(false);
-    setSelectedStudent(null);
+      setFeeRecords((prev) => ({
+        ...prev,
+        [selectedStudent.id]: {
+          paid: newPaid,
+          status: newStatus,
+        },
+      }));
+
+      // Call API updateStudent to persist fee update in database
+      const updatePayload = {
+        id: selectedStudent.id,
+        schoolId: schoolId || selectedStudent.schoolId,
+        gradeId:
+          selectedStudent.gradeId || selectedStudent.enrollment?.grade_id || "",
+        admissionNo: selectedStudent.admissionNo || "",
+        rollNo: selectedStudent.rollNo || "",
+        firstName: selectedStudent.firstName,
+        lastName: selectedStudent.lastName,
+        gender: selectedStudent.gender,
+        dateOfBirth: selectedStudent.dateOfBirth,
+        email: selectedStudent.email,
+        phone: selectedStudent.phone,
+        fatherName: selectedStudent.fatherName,
+        fatherPhone: selectedStudent.fatherPhone,
+        fatherEmail: selectedStudent.fatherEmail,
+        motherName: selectedStudent.motherName,
+        motherPhone: selectedStudent.motherPhone,
+        motherEmail: selectedStudent.motherEmail,
+        guardianName: selectedStudent.guardianName,
+        guardianPhone: selectedStudent.guardianPhone,
+        guardianEmail: selectedStudent.guardianEmail,
+        guardianRelation: selectedStudent.guardianRelation,
+        address: selectedStudent.address,
+        bloodGroup: selectedStudent.bloodGroup,
+        photoUrl: selectedStudent.photoUrl || "",
+        status: selectedStudent.status || "Active",
+        joinedAt: selectedStudent.joinedAt,
+        academicYearId:
+          selectedStudent.academicYearId ||
+          selectedStudent.enrollment?.academic_year_id ||
+          "",
+        section:
+          selectedStudent.section || selectedStudent.enrollment?.section || "",
+        totalFees: totalFee,
+        feesPaid: newPaid,
+        remainingFees: remaining,
+      };
+
+      const resultAction = await dispatch(updateStudent(updatePayload));
+      if (updateStudent.fulfilled.match(resultAction)) {
+        message.success(
+          `Successfully recorded payment of ₹${addedAmount.toLocaleString()} for ${
+            selectedStudent.fullName || selectedStudent.firstName
+          } in API database!`,
+        );
+      } else {
+        message.success(
+          `Recorded payment of ₹${addedAmount.toLocaleString()} for ${
+            selectedStudent.fullName || selectedStudent.firstName
+          }`,
+        );
+      }
+    } catch (err: any) {
+      message.error(err.message || "Failed to record payment in API");
+    } finally {
+      setSubmittingPayment(false);
+      setDrawerVisible(false);
+      setSelectedStudent(null);
+    }
   };
 
   // Selected grade details
@@ -195,7 +261,7 @@ export const SchoolFees: React.FC = () => {
       paidCount: 0,
       partialCount: 0,
       pendingCount: 0,
-    }
+    },
   );
 
   const columns = [
@@ -218,7 +284,11 @@ export const SchoolFees: React.FC = () => {
               border: "1px solid rgba(69, 162, 158, 0.3)",
             }}
           >
-            {(record.firstName?.[0] || record.fullName?.[0] || "S").toUpperCase()}
+            {(
+              record.firstName?.[0] ||
+              record.fullName?.[0] ||
+              "S"
+            ).toUpperCase()}
           </div>
           <div>
             <span
@@ -277,7 +347,7 @@ export const SchoolFees: React.FC = () => {
         const { totalFee } = getFeeDetails(record);
         return (
           <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-            ${totalFee.toLocaleString()}
+            ₹{totalFee.toLocaleString()}
           </span>
         );
       },
@@ -289,7 +359,7 @@ export const SchoolFees: React.FC = () => {
         const { paid } = getFeeDetails(record);
         return (
           <span style={{ color: "#2da44e", fontWeight: 600 }}>
-            ${paid.toLocaleString()}
+            ₹{paid.toLocaleString()}
           </span>
         );
       },
@@ -306,7 +376,7 @@ export const SchoolFees: React.FC = () => {
               fontWeight: due > 0 ? 700 : 400,
             }}
           >
-            ${due.toLocaleString()}
+            ₹{due.toLocaleString()}
           </span>
         );
       },
@@ -390,7 +460,8 @@ export const SchoolFees: React.FC = () => {
           School Fees Management
         </Title>
         <Paragraph style={{ color: "var(--text-secondary)", marginTop: 4 }}>
-          Track student tuition fees, collect payments, and filter student records by grade.
+          Track student tuition fees, collect payments, and filter student
+          records by grade.
         </Paragraph>
       </div>
 
@@ -412,7 +483,7 @@ export const SchoolFees: React.FC = () => {
                 </span>
               }
               value={stats.totalExpected}
-              prefix="$"
+              prefix="₹"
               valueStyle={{ color: "var(--text-primary)", fontWeight: 700 }}
             />
           </Card>
@@ -433,7 +504,7 @@ export const SchoolFees: React.FC = () => {
                 </span>
               }
               value={stats.totalCollected}
-              prefix="$"
+              prefix="₹"
               valueStyle={{ color: "#2da44e", fontWeight: 700 }}
             />
           </Card>
@@ -454,7 +525,7 @@ export const SchoolFees: React.FC = () => {
                 </span>
               }
               value={stats.totalDue}
-              prefix="$"
+              prefix="₹"
               valueStyle={{ color: "#f85149", fontWeight: 700 }}
             />
           </Card>
@@ -468,7 +539,13 @@ export const SchoolFees: React.FC = () => {
             }}
             bodyStyle={{ padding: 20 }}
           >
-            <div style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 8 }}>
+            <div
+              style={{
+                color: "var(--text-secondary)",
+                fontSize: 13,
+                marginBottom: 8,
+              }}
+            >
               Payment Status Summary
             </div>
             <Space size={8} wrap>
@@ -500,7 +577,10 @@ export const SchoolFees: React.FC = () => {
         <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
           <Col xs={24} sm={16} md={12}>
             <Space direction="vertical" style={{ width: "100%" }} size={4}>
-              <Text strong style={{ color: "var(--text-secondary)", fontSize: 12 }}>
+              <Text
+                strong
+                style={{ color: "var(--text-secondary)", fontSize: 12 }}
+              >
                 <FilterOutlined style={{ marginRight: 6, color: "#45a29e" }} />
                 Filter Students by Grade
               </Text>
@@ -531,7 +611,7 @@ export const SchoolFees: React.FC = () => {
                       <span>
                         {grade.name}
                         {grade.tuition_fee || grade.tuitionFee
-                          ? ` - Tuition: $${(
+                          ? ` - Tuition: ₹${(
                               grade.tuition_fee || grade.tuitionFee
                             ).toLocaleString()}`
                           : ""}
@@ -543,14 +623,26 @@ export const SchoolFees: React.FC = () => {
             </Space>
           </Col>
           {selectedGradeObj && (
-            <Col xs={24} sm={8} md={12} style={{ display: "flex", alignItems: "flex-end" }}>
+            <Col
+              xs={24}
+              sm={8}
+              md={12}
+              style={{ display: "flex", alignItems: "flex-end" }}
+            >
               <Tag
                 color="purple"
-                style={{ padding: "6px 12px", borderRadius: 8, fontSize: 13, fontWeight: 600 }}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
               >
-                Selected Grade: {selectedGradeObj.name} | Tuition: $
+                Selected Grade: {selectedGradeObj.name} | Tuition: ₹
                 {(
-                  selectedGradeObj.tuition_fee || selectedGradeObj.tuitionFee || 1500
+                  selectedGradeObj.tuition_fee ||
+                  selectedGradeObj.tuitionFee ||
+                  1500
                 ).toLocaleString()}
               </Tag>
             </Col>
@@ -627,24 +719,44 @@ export const SchoolFees: React.FC = () => {
                 marginBottom: 20,
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 6,
+                }}
+              >
                 <Text type="secondary">Admission No:</Text>
                 <Text strong>{selectedStudent.admissionNo || "—"}</Text>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 6,
+                }}
+              >
                 <Text type="secondary">Total Tuition Fee:</Text>
-                <Text strong>${getFeeDetails(selectedStudent).totalFee}</Text>
+                <Text strong>
+                  ₹{getFeeDetails(selectedStudent).totalFee.toLocaleString()}
+                </Text>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 6,
+                }}
+              >
                 <Text type="secondary">Already Paid:</Text>
                 <Text strong style={{ color: "#2da44e" }}>
-                  ${getFeeDetails(selectedStudent).paid}
+                  ₹{getFeeDetails(selectedStudent).paid.toLocaleString()}
                 </Text>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <Text type="secondary">Current Balance Due:</Text>
                 <Text strong style={{ color: "#f85149" }}>
-                  ${getFeeDetails(selectedStudent).due}
+                  ₹{getFeeDetails(selectedStudent).due.toLocaleString()}
                 </Text>
               </div>
             </div>
@@ -653,10 +765,12 @@ export const SchoolFees: React.FC = () => {
               name="amount"
               label={
                 <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>
-                  Payment Amount ($)
+                  Payment Amount (₹)
                 </span>
               }
-              rules={[{ required: true, message: "Please input payment amount!" }]}
+              rules={[
+                { required: true, message: "Please input payment amount!" },
+              ]}
             >
               <InputNumber
                 min={1}
@@ -679,7 +793,9 @@ export const SchoolFees: React.FC = () => {
                   Payment Method
                 </span>
               }
-              rules={[{ required: true, message: "Please select payment method!" }]}
+              rules={[
+                { required: true, message: "Please select payment method!" },
+              ]}
             >
               <Select
                 size="large"

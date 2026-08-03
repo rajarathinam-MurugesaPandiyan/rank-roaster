@@ -13,15 +13,20 @@ import {
   Upload,
   Image,
   Switch,
+  Avatar,
 } from "antd";
 import {
   UserAddOutlined,
   PlusOutlined,
   DeleteOutlined,
   UploadOutlined,
+  CameraOutlined,
+  UserOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 
 import { useParams } from "react-router-dom";
+import axios from "axios";
 import { getCookie } from "../../helpers/cookies";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
 import {
@@ -30,6 +35,7 @@ import {
 } from "../../redux/roaster/roasterSlice";
 import { createStudent } from "../../redux/students/studentsSlice";
 import { fetchAcademicYearsBySchool } from "../../redux/academic/academicSlice";
+import { ImageCropModal } from "../../components/ImageCropModal";
 
 const { Title, Paragraph } = Typography;
 const { Option } = Select;
@@ -43,6 +49,52 @@ export const SchoolOnboarding: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState("Student");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Profile photo state
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>("");
+  const [profilePhotoKey, setProfilePhotoKey] = useState<string>("");
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState("avatar.png");
+
+  const handleProfilePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      message.error(
+        "Please select a valid picture file (PNG, JPEG, WEBP, etc.)",
+      );
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      message.error("Picture size exceeds 12MB limit!");
+      return;
+    }
+    setSelectedFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setRawImageSrc(reader.result as string);
+      setCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleRemoveProfilePhoto = async () => {
+    if (profilePhotoKey) {
+      try {
+        await axios.delete(
+          `http://localhost:8080/public/documents/delete?key=${encodeURIComponent(profilePhotoKey)}`,
+        );
+      } catch (e) {
+        console.error("Failed to delete photo from storage", e);
+      }
+    }
+    setProfilePhotoUrl("");
+    setProfilePhotoKey("");
+    form.setFieldValue("photoUrl", "");
+    message.info("Profile photo removed.");
+  };
 
   useEffect(() => {
     if (schoolId) {
@@ -76,6 +128,7 @@ export const SchoolOnboarding: React.FC = () => {
         email: values.email,
         password: "TempPass@" + (values.phone || "1234567890"),
         phone: values.phone,
+        image_url: profilePhotoUrl,
         role: values.role.toLowerCase(),
         is_admin: values.role === "Teacher" ? !!values.is_admin : false,
         grade: values.role === "Student" ? values.grade : "N/A",
@@ -104,14 +157,29 @@ export const SchoolOnboarding: React.FC = () => {
         status: values.status,
         alt_phone: values.altPhone || "",
         gender: values.gender || "",
+        total_fees:
+          values.role === "Student" ? Number(values.totalFees || 0) : 0,
+        fees_paid: values.role === "Student" ? Number(values.feesPaid || 0) : 0,
+        remaining_fees:
+          values.role === "Student"
+            ? Math.max(
+                0,
+                Number(values.totalFees || 0) - Number(values.feesPaid || 0),
+              )
+            : 0,
       };
 
       if (values.role.toLowerCase() === "student") {
         const firstName = values.firstName || "";
         const lastName = values.lastName || "";
+        const fullName = `${firstName} ${lastName}`.trim();
 
         const dobDate = new Date(values.dob);
         const dobISO = dobDate.toISOString();
+
+        const totalFees = Number(values.totalFees || 0);
+        const feesPaid = Number(values.feesPaid || 0);
+        const remainingFees = Math.max(0, totalFees - feesPaid);
 
         const studentPayload = {
           schoolId: finalSchoolId,
@@ -136,20 +204,30 @@ export const SchoolOnboarding: React.FC = () => {
           guardianRelation: values.guardianRelation || "",
           address: values.address,
           bloodGroup: values.bloodGroup || "",
-          photoUrl: "",
+          photoUrl: profilePhotoUrl,
+          documents: (values.documents || []).map((doc: any) => ({
+            name: doc.name,
+            url: doc.url,
+            type: doc.type || "",
+          })),
           status: "Active",
           joinedAt: new Date().toISOString(),
           password: "TempPass@" + (values.phone || "1234567890"),
           academicYearId: values.academicYearId,
           section: values.section,
+          totalFees: totalFees,
+          feesPaid: feesPaid,
+          remainingFees: remainingFees,
         };
 
         const resultAction = await dispatch(createStudent(studentPayload));
         if (createStudent.fulfilled.match(resultAction)) {
           message.success(
-            `Successfully onboarded student ${values.name} in database!`,
+            `Successfully onboarded student ${fullName} in database!`,
           );
           form.resetFields();
+          setProfilePhotoUrl("");
+          setProfilePhotoKey("");
         } else {
           const errorMsg =
             (resultAction.payload as string) || "Failed to onboard student";
@@ -162,6 +240,8 @@ export const SchoolOnboarding: React.FC = () => {
             `Successfully onboarded teacher ${values.name} as teacher in database!`,
           );
           form.resetFields();
+          setProfilePhotoUrl("");
+          setProfilePhotoKey("");
         } else {
           const errorMsg =
             (resultAction.payload as string) || "Failed to onboard teacher";
@@ -231,6 +311,97 @@ export const SchoolOnboarding: React.FC = () => {
               }}
               requiredMark={false}
             >
+              {/* Profile Photo Section with Crop & Live Preview */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 20,
+                  marginBottom: 24,
+                  padding: 16,
+                  background: "var(--bg-elevated)",
+                  borderRadius: 12,
+                  border: "1px solid var(--border-muted)",
+                }}
+              >
+                <Avatar
+                  key={profilePhotoUrl || "empty-avatar"}
+                  size={80}
+                  src={profilePhotoUrl || undefined}
+                  icon={!profilePhotoUrl ? <UserOutlined /> : undefined}
+                  style={{
+                    backgroundColor: "var(--primary-brand)",
+                    boxShadow: "0 4px 12px rgba(79, 70, 229, 0.2)",
+                  }}
+                />
+                <div>
+                  <Title
+                    level={5}
+                    style={{ margin: 0, color: "var(--text-primary)" }}
+                  >
+                    Profile Photo
+                  </Title>
+                  <Paragraph
+                    style={{
+                      color: "var(--text-secondary)",
+                      margin: "4px 0 12px 0",
+                      fontSize: 13,
+                    }}
+                  >
+                    Upload a high-resolution PNG or JPEG picture (Max size:
+                    12MB). You will be prompted with a crop preview before
+                    uploading.
+                  </Paragraph>
+                  <Space wrap>
+                    <label
+                      htmlFor="profile-photo-input"
+                      style={{
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "8px 16px",
+                        background: "var(--primary-brand)",
+                        color: "#fff",
+                        borderRadius: 8,
+                        fontWeight: 600,
+                        fontSize: 13,
+                      }}
+                    >
+                      <CameraOutlined />{" "}
+                      {profilePhotoUrl ? "Change Photo" : "Upload & Crop Photo"}
+                    </label>
+                    <input
+                      id="profile-photo-input"
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp, image/gif"
+                      style={{ display: "none" }}
+                      onChange={handleProfilePhotoSelect}
+                    />
+
+                    {profilePhotoUrl && (
+                      <>
+                        <Button
+                          icon={<EyeOutlined />}
+                          onClick={() => setPreviewImage(profilePhotoUrl)}
+                          style={{ borderRadius: 8 }}
+                        >
+                          Preview Photo
+                        </Button>
+                        <Button
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={handleRemoveProfilePhoto}
+                          style={{ borderRadius: 8 }}
+                        >
+                          Remove Photo
+                        </Button>
+                      </>
+                    )}
+                  </Space>
+                </div>
+              </div>
+
               <Title level={5} style={{ color: "#45a29e", marginBottom: 16 }}>
                 Basic Information
               </Title>
@@ -244,7 +415,10 @@ export const SchoolOnboarding: React.FC = () => {
                       </span>
                     }
                     rules={[
-                      { required: true, message: "Please input the first name!" },
+                      {
+                        required: true,
+                        message: "Please input the first name!",
+                      },
                     ]}
                   >
                     <Input
@@ -267,7 +441,10 @@ export const SchoolOnboarding: React.FC = () => {
                       </span>
                     }
                     rules={[
-                      { required: true, message: "Please input the last name!" },
+                      {
+                        required: true,
+                        message: "Please input the last name!",
+                      },
                     ]}
                   >
                     <Input
@@ -645,7 +822,10 @@ export const SchoolOnboarding: React.FC = () => {
                           </span>
                         }
                         rules={[
-                          { required: true, message: "Please select academic year!" },
+                          {
+                            required: true,
+                            message: "Please select academic year!",
+                          },
                         ]}
                       >
                         <Select
@@ -960,6 +1140,118 @@ export const SchoolOnboarding: React.FC = () => {
                             background: "var(--bg-elevated)",
                             border: "1px solid var(--border-muted)",
                             color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Title
+                    level={5}
+                    style={{
+                      color: "#45a29e",
+                      marginTop: 16,
+                      marginBottom: 16,
+                    }}
+                  >
+                    Fee Structure & Payments
+                  </Title>
+                  <Row gutter={16}>
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="totalFees"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Total Fee Amount (₹)
+                          </span>
+                        }
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input total fee amount!",
+                          },
+                        ]}
+                      >
+                        <Input
+                          type="number"
+                          placeholder="e.g. 15000"
+                          min={0}
+                          onChange={() => {
+                            const tot = Number(
+                              form.getFieldValue("totalFees") || 0,
+                            );
+                            const paid = Number(
+                              form.getFieldValue("feesPaid") || 0,
+                            );
+                            const rem = Math.max(0, tot - paid);
+                            form.setFieldValue("remainingFees", rem);
+                          }}
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="feesPaid"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Fees Paid (₹)
+                          </span>
+                        }
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input fees paid!",
+                          },
+                        ]}
+                      >
+                        <Input
+                          type="number"
+                          placeholder="e.g. 5000"
+                          min={0}
+                          onChange={() => {
+                            const tot = Number(
+                              form.getFieldValue("totalFees") || 0,
+                            );
+                            const paid = Number(
+                              form.getFieldValue("feesPaid") || 0,
+                            );
+                            const rem = Math.max(0, tot - paid);
+                            form.setFieldValue("remainingFees", rem);
+                          }}
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="remainingFees"
+                        label={
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            Remaining Amount to be Paid (₹)
+                          </span>
+                        }
+                      >
+                        <Input
+                          type="number"
+                          placeholder="Remaining Amount"
+                          readOnly
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "#ffa552",
+                            fontWeight: 600,
                             borderRadius: 8,
                           }}
                         />
@@ -1300,12 +1592,9 @@ export const SchoolOnboarding: React.FC = () => {
                                         formData.append("file", file);
 
                                         const res = await fetch(
-                                          "http://localhost:8080/api/v1/upload",
+                                          "http://localhost:8080/public/documents/upload",
                                           {
                                             method: "POST",
-                                            headers: {
-                                              Authorization: `Bearer ${token}`,
-                                            },
                                             body: formData,
                                           },
                                         );
@@ -1467,6 +1756,20 @@ export const SchoolOnboarding: React.FC = () => {
           }}
         />
       </div>
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        open={cropModalOpen}
+        imageSrc={rawImageSrc}
+        fileName={selectedFileName}
+        onCancel={() => setCropModalOpen(false)}
+        onCropComplete={(result) => {
+          setProfilePhotoUrl(result.url);
+          setProfilePhotoKey(result.file_key);
+          form.setFieldValue("photoUrl", result.url);
+          setCropModalOpen(false);
+        }}
+      />
     </div>
   );
 };
