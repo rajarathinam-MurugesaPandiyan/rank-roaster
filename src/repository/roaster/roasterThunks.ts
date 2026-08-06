@@ -106,6 +106,12 @@ export const createGradeStructure = createAsyncThunk(
       name: string;
       color: string;
       tuition_fee: number;
+      sections?: {
+        id?: string;
+        name: string;
+        class_teacher_id?: string;
+        class_teacher_name?: string;
+      }[];
       subjects: any[];
     },
     { rejectWithValue },
@@ -131,6 +137,12 @@ export const updateGradeStructure = createAsyncThunk(
       name: string;
       color: string;
       tuition_fee: number;
+      sections?: {
+        id?: string;
+        name: string;
+        class_teacher_id?: string;
+        class_teacher_name?: string;
+      }[];
       subjects: any[];
     },
     { rejectWithValue },

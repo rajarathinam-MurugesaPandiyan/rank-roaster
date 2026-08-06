@@ -318,11 +318,10 @@ export const AcademicExams: React.FC = () => {
           onClick={handleOpenModal}
           size="large"
           style={{
-            background: "#45a29e",
-            borderColor: "#45a29e",
+            background: "var(--primary-brand)",
+            borderColor: "var(--primary-brand)",
             borderRadius: 8,
             fontWeight: 600,
-            boxShadow: "0 4px 12px rgba(69, 162, 158, 0.2)",
           }}
         >
           Create Exam
@@ -399,7 +398,7 @@ export const AcademicExams: React.FC = () => {
               type="primary"
               icon={<PlusOutlined />}
               onClick={handleOpenModal}
-              style={{ background: "#45a29e", borderColor: "#45a29e" }}
+              style={{ background: "var(--primary-brand)", borderColor: "var(--primary-brand)" }}
             >
               Create Exam
             </Button>
@@ -761,7 +760,7 @@ export const AcademicExams: React.FC = () => {
                 type="primary"
                 htmlType="submit"
                 loading={submitLoading}
-                style={{ background: "#45a29e", borderColor: "#45a29e" }}
+                style={{ background: "var(--primary-brand)", borderColor: "var(--primary-brand)" }}
               >
                 Create Exam
               </Button>

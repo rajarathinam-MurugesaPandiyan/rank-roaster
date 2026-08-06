@@ -5,6 +5,7 @@ import { SchoolDashboard } from "../pages/Dashboard/Dashboard";
 import { SchoolOnboarding } from "../pages/Onboarding/Onboarding";
 import { SchoolClasses } from "../pages/Classes/Classes";
 import { ProtectedRoute } from "./ProtectedRoute";
+import { PublicRoute } from "./PublicRoute";
 import { TeachersList } from "../pages/Teachers/TeachersList";
 import { SchoolGrades } from "../pages/Grades/Grades";
 import { GradesPage } from "../pages/Grades/GradesPage";
@@ -19,8 +20,23 @@ export const AppRoutes = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Main login page */}
-        <Route path="/" element={<Login />} />
+        {/* Main login page (redirects to dashboard if already authenticated) */}
+        <Route
+          path="/"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
 
         {/* Protected school dashboard layout */}
         <Route element={<ProtectedRoute />}>

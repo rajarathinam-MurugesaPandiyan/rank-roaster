@@ -49,6 +49,7 @@ export interface User {
   role: string;
   school_id?: string;
   company_id?: string;
+  institute_type?: "school" | "college" | "university";
   is_admin?: boolean;
   [key: string]: any;
 }
@@ -113,6 +114,9 @@ const roasterSlice = createSlice({
     setCurrentSchool(state, action) {
       const school = action.payload;
       state.currentSchool = school;
+      const role = state.currentUser?.role || school?.role || "school";
+      const isAdmin = state.currentUser?.is_admin || school?.is_admin;
+      state.tabs = getTabsForRole(role, isAdmin);
       saveLocalStorage("currentSchool", school);
     },
     setStudentDataState(state, action) {
@@ -184,6 +188,10 @@ const roasterSlice = createSlice({
       .addCase(fetchSchoolById.fulfilled, (state, action) => {
         state.loading = false;
         state.currentSchool = action.payload;
+        const school = action.payload;
+        const role = state.currentUser?.role || school?.role || "school";
+        const isAdmin = state.currentUser?.is_admin || school?.is_admin;
+        state.tabs = getTabsForRole(role, isAdmin);
         saveLocalStorage("currentSchool", action.payload);
       })
       .addCase(fetchSchoolById.rejected, (state, action) => {

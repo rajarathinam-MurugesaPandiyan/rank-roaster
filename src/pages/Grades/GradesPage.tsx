@@ -18,7 +18,11 @@ import {
 import { PlusOutlined, DeleteOutlined, BookOutlined } from "@ant-design/icons";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
 import { fetchTeachers } from "../../redux/teachers/teachersSlice";
-import { fetchGradesBySchool, createGradeStructure, updateGradeStructure } from "../../redux/roaster/roasterSlice";
+import {
+  fetchGradesBySchool,
+  createGradeStructure,
+  updateGradeStructure,
+} from "../../redux/roaster/roasterSlice";
 import { api } from "../../api/api";
 
 const { Title, Paragraph } = Typography;
@@ -27,9 +31,8 @@ const { Option } = Select;
 export const GradesPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { teachers } = useAppSelector((state) => state.teachers);
-  const { currentUser, currentSchool, grades, loading, submitLoading } = useAppSelector(
-    (state) => state.roaster,
-  );
+  const { currentUser, currentSchool, grades, loading, submitLoading } =
+    useAppSelector((state) => state.roaster);
 
   const [form] = Form.useForm();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,12 +74,24 @@ export const GradesPage: React.FC = () => {
     form.setFieldsValue({
       gradeName: record.name,
       fees: record.tuition_fee,
-      subjects: record.subjects && record.subjects.length > 0
-        ? record.subjects.map((subj: any) => ({
-            name: subj.name,
-            teacherId: subj.teacher_id || subj.teacherId,
-          }))
-        : [{ name: "", teacherId: undefined }],
+      sections:
+        record.sections && record.sections.length > 0
+          ? record.sections.map((sec: any) => ({
+              id: typeof sec === "object" ? sec.id : undefined,
+              name: typeof sec === "string" ? sec : sec.name,
+              classTeacherId:
+                typeof sec === "object"
+                  ? sec.class_teacher_id || sec.classTeacherId
+                  : undefined,
+            }))
+          : [{ name: "A", classTeacherId: undefined }],
+      subjects:
+        record.subjects && record.subjects.length > 0
+          ? record.subjects.map((subj: any) => ({
+              name: subj.name,
+              teacherId: subj.teacher_id || subj.teacherId,
+            }))
+          : [{ name: "", teacherId: undefined }],
     });
   };
 
@@ -111,7 +126,8 @@ export const GradesPage: React.FC = () => {
       "#38bdf8",
       "#ec4899",
     ];
-    const randomColor = editingGrade?.color ||
+    const randomColor =
+      editingGrade?.color ||
       presetColors[Math.floor(Math.random() * presetColors.length)];
 
     const mappedSubjects = (values.subjects || []).map((subj: any) => {
@@ -124,26 +140,40 @@ export const GradesPage: React.FC = () => {
       };
     });
 
+    const mappedSections = (values.sections || []).map((sec: any) => {
+      const assignedTeacher = teachers.find((t) => t.id === sec.classTeacherId);
+      return {
+        id: sec.id,
+        name: sec.name,
+        class_teacher_id: sec.classTeacherId || "",
+        class_teacher_name: assignedTeacher
+          ? assignedTeacher.name
+          : "Unassigned",
+      };
+    });
+
+    const gradePayload = {
+      name: values.gradeName,
+      color: randomColor,
+      tuition_fee: Number(values.fees),
+      sections: mappedSections,
+      subjects: mappedSubjects,
+    };
+
     let resultAction;
     if (editingGrade) {
       resultAction = await dispatch(
         updateGradeStructure({
           id: editingGrade.id,
-          name: values.gradeName,
-          color: randomColor,
-          tuition_fee: Number(values.fees),
-          subjects: mappedSubjects,
-        })
+          ...gradePayload,
+        }),
       );
     } else {
       resultAction = await dispatch(
         createGradeStructure({
           school_id: schoolId,
-          name: values.gradeName,
-          color: randomColor,
-          tuition_fee: Number(values.fees),
-          subjects: mappedSubjects,
-        })
+          ...gradePayload,
+        }),
       );
     }
 
@@ -153,12 +183,14 @@ export const GradesPage: React.FC = () => {
 
     if (isSuccess) {
       message.success(
-        `Successfully ${editingGrade ? "updated" : "structured"} Grade "${values.gradeName}"!`
+        `Successfully ${editingGrade ? "updated" : "structured"} Grade "${values.gradeName}"!`,
       );
       handleCloseModal();
       dispatch(fetchGradesBySchool(schoolId));
     } else {
-      const errorMsg = resultAction.payload as string || `Failed to ${editingGrade ? "update" : "structure"} grade`;
+      const errorMsg =
+        (resultAction.payload as string) ||
+        `Failed to ${editingGrade ? "update" : "structure"} grade`;
       message.error(errorMsg);
     }
   };
@@ -184,6 +216,46 @@ export const GradesPage: React.FC = () => {
           </span>
         </Space>
       ),
+    },
+    {
+      title: "Sections & Assigned Class Teachers",
+      dataIndex: "sections",
+      key: "sections",
+      render: (sections: any[]) => {
+        if (!sections || sections.length === 0) {
+          return (
+            <span style={{ color: "var(--text-secondary)" }}>No sections</span>
+          );
+        }
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {sections.map((sec: any, idx: number) => {
+              const secName = typeof sec === "string" ? sec : sec.name;
+              const teacherName =
+                typeof sec === "string"
+                  ? ""
+                  : sec.class_teacher_name || sec.classTeacherName;
+              return (
+                <Tag
+                  key={idx}
+                  style={{
+                    background: "rgba(99, 102, 241, 0.08)",
+                    border: "1px solid rgba(99, 102, 241, 0.25)",
+                    color: "var(--primary-brand)",
+                    borderRadius: 6,
+                    padding: "4px 8px",
+                  }}
+                >
+                  <strong>Sec {secName}</strong>
+                  {teacherName && teacherName !== "Unassigned"
+                    ? `: ${teacherName}`
+                    : ""}
+                </Tag>
+              );
+            })}
+          </div>
+        );
+      },
     },
     {
       title: "Annual Tuition Fees",
@@ -312,8 +384,8 @@ export const GradesPage: React.FC = () => {
           icon={<PlusOutlined />}
           onClick={handleOpenModal}
           style={{
-            background: "#45a29e",
-            borderColor: "#45a29e",
+            background: "var(--primary-brand)",
+            borderColor: "var(--primary-brand)",
             color: "#ffffff",
             fontWeight: 600,
             fontFamily: "var(--font-display)",
@@ -328,7 +400,7 @@ export const GradesPage: React.FC = () => {
       <Card
         title={
           <Space>
-            <BookOutlined style={{ color: "#45a29e" }} />
+            <BookOutlined style={{ color: "var(--primary-brand)" }} />
             <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>
               Structured Grades Directory
             </span>
@@ -372,7 +444,9 @@ export const GradesPage: React.FC = () => {
               fontWeight: 700,
             }}
           >
-            {editingGrade ? "Update Grade Structure" : "Configure New Grade Structure"}
+            {editingGrade
+              ? "Update Grade Structure"
+              : "Configure New Grade Structure"}
           </span>
         }
         placement="right"
@@ -414,8 +488,8 @@ export const GradesPage: React.FC = () => {
               onClick={() => form.submit()}
               loading={submitLoading}
               style={{
-                background: "#45a29e",
-                borderColor: "#45a29e",
+                background: "var(--primary-brand)",
+                borderColor: "var(--primary-brand)",
                 fontWeight: 600,
                 fontFamily: "var(--font-display)",
                 color: "#ffffff",
@@ -493,7 +567,104 @@ export const GradesPage: React.FC = () => {
             }}
           />
 
-          <Title level={5} style={{ color: "#45a29e", marginBottom: 12 }}>
+          <Title
+            level={5}
+            style={{ color: "var(--primary-brand)", marginBottom: 12 }}
+          >
+            Sections & Assigned Class Teachers
+          </Title>
+
+          <Form.List name="sections">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Row
+                    key={key}
+                    gutter={16}
+                    align="middle"
+                    style={{ marginBottom: 12 }}
+                  >
+                    <Col span={11}>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "name"]}
+                        rules={[
+                          { required: true, message: "Enter section name" },
+                        ]}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <Input
+                          placeholder="Section Name (e.g. A)"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-muted)",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={11}>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "classTeacherId"]}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <Select
+                          placeholder="Assign Class Teacher"
+                          allowClear
+                          dropdownStyle={{ background: "var(--bg-elevated)" }}
+                        >
+                          {teachers.map((t) => (
+                            <Option key={t.id} value={t.id}>
+                              {t.name} ({t.subject || "Teacher"})
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col span={2} style={{ textAlign: "center" }}>
+                      <DeleteOutlined
+                        onClick={() => remove(name)}
+                        style={{
+                          color: "#ef4444",
+                          fontSize: 18,
+                          cursor: "pointer",
+                        }}
+                      />
+                    </Col>
+                  </Row>
+                ))}
+                <Form.Item>
+                  <Button
+                    type="dashed"
+                    onClick={() => add()}
+                    icon={<PlusOutlined />}
+                    style={{
+                      width: "100%",
+                      borderColor: "var(--border-muted)",
+                      color: "var(--primary-brand)",
+                      borderRadius: 8,
+                    }}
+                  >
+                    Add Section
+                  </Button>
+                </Form.Item>
+              </>
+            )}
+          </Form.List>
+
+          <div
+            style={{
+              borderTop: "1px solid var(--border-muted)",
+              margin: "16px 0",
+            }}
+          />
+
+          <Title
+            level={5}
+            style={{ color: "var(--primary-brand)", marginBottom: 12 }}
+          >
             Subjects & Assigned Teachers
           </Title>
 
@@ -568,7 +739,7 @@ export const GradesPage: React.FC = () => {
                     style={{
                       width: "100%",
                       borderColor: "var(--border-muted)",
-                      color: "#45a29e",
+                      color: "var(--primary-brand)",
                       borderRadius: 8,
                     }}
                   >

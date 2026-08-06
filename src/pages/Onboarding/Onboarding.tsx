@@ -46,6 +46,13 @@ export const SchoolOnboarding: React.FC = () => {
   const { academicYears = [] } = useAppSelector((state) => state.academic);
   const { schoolId } = useParams<{ schoolId: string }>();
   const [form] = Form.useForm();
+  const selectedGradeId = Form.useWatch("grade", form);
+  const selectedGradeObj = (grades as any[]).find(
+    (g) => g.id === selectedGradeId || g.name === selectedGradeId
+  );
+  const availableSections: string[] = (selectedGradeObj?.sections || []).map(
+    (sec: any) => (typeof sec === "string" ? sec : sec.name)
+  );
   const [selectedRole, setSelectedRole] = useState("Student");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -112,6 +119,26 @@ export const SchoolOnboarding: React.FC = () => {
       });
     }
   }, [activeYear, form]);
+
+  useEffect(() => {
+    if (grades && grades.length > 0) {
+      const currentGrade = form.getFieldValue("grade");
+      const foundGrade = (grades as any[]).find(
+        (g) => g.id === currentGrade || g.name === currentGrade
+      );
+      const activeGrade = foundGrade || grades[0];
+      if (!foundGrade && activeGrade) {
+        form.setFieldValue("grade", activeGrade.id);
+      }
+      const secs: string[] = (activeGrade?.sections || []).map((sec: any) =>
+        typeof sec === "string" ? sec : sec.name
+      );
+      const currentSection = form.getFieldValue("section");
+      if (secs.length > 0 && (!currentSection || !secs.includes(currentSection))) {
+        form.setFieldValue("section", secs[0]);
+      }
+    }
+  }, [grades, selectedGradeId, form]);
 
   const onFinish = async (values: any) => {
     setSubmitting(true);
@@ -703,6 +730,19 @@ export const SchoolOnboarding: React.FC = () => {
                         <Select
                           style={{ width: "100%" }}
                           dropdownStyle={{ background: "var(--bg-elevated)" }}
+                          onChange={(val) => {
+                            const foundGrade = (grades as any[]).find(
+                              (g) => g.id === val || g.name === val
+                            );
+                            const secs: string[] = (foundGrade?.sections || []).map(
+                              (sec: any) => (typeof sec === "string" ? sec : sec.name)
+                            );
+                            if (secs.length > 0) {
+                              form.setFieldValue("section", secs[0]);
+                            } else {
+                              form.setFieldValue("section", "");
+                            }
+                          }}
                         >
                           {grades.map((grade: any) => (
                             <Option key={grade.id} value={grade.id}>
@@ -850,18 +890,32 @@ export const SchoolOnboarding: React.FC = () => {
                           </span>
                         }
                         rules={[
-                          { required: true, message: "Please input Section!" },
+                          { required: true, message: "Please select or input Section!" },
                         ]}
                       >
-                        <Input
-                          placeholder="e.g. A"
-                          style={{
-                            background: "var(--bg-elevated)",
-                            border: "1px solid var(--border-muted)",
-                            color: "var(--text-primary)",
-                            borderRadius: 8,
-                          }}
-                        />
+                        {availableSections.length > 0 ? (
+                          <Select
+                            placeholder="Select Section"
+                            allowClear
+                            dropdownStyle={{ background: "var(--bg-elevated)" }}
+                          >
+                            {availableSections.map((sec: string) => (
+                              <Option key={sec} value={sec}>
+                                Section {sec}
+                              </Option>
+                            ))}
+                          </Select>
+                        ) : (
+                          <Input
+                            placeholder="e.g. A"
+                            style={{
+                              background: "var(--bg-elevated)",
+                              border: "1px solid var(--border-muted)",
+                              color: "var(--text-primary)",
+                              borderRadius: 8,
+                            }}
+                          />
+                        )}
                       </Form.Item>
                     </Col>
                   </Row>

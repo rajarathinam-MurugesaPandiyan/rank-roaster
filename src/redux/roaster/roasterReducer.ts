@@ -12,6 +12,7 @@ import { saveLocalStorage } from "../../helpers/storage";
 
 export const getTabsForRole = (role?: string, isAdmin?: boolean) => {
   const normalizedRole = role?.toLowerCase();
+
   if (normalizedRole === "school") {
     return [
       { key: "dashboard", label: "Dashboard", icon: "dashboard" },
@@ -56,7 +57,9 @@ export const getTabsForRole = (role?: string, isAdmin?: boolean) => {
     { key: "teachers", label: "Teachers", icon: "teachers" },
     { key: "students", label: "Students", icon: "students" },
     { key: "fees", label: "Fees", icon: "fees" },
-    { key: "classes", label: "Classes", icon: "classes" },
+    { key: "academic", label: "Academic", icon: "academic" },
+    { key: "events", label: "Events", icon: "events" },
+    { key: "grades", label: "Grades", icon: "grades" },
   ];
 };
 
